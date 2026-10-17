@@ -1,0 +1,1970 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>os-visualizer 操作系统核心原理可视化教学平台 —— 前端UI设计原型</title>
+  <style>
+    /* ==========================================================================
+       深色与浅色双主题设计令牌体系 (Dual Theme Tokens)
+       ========================================================================== */
+    :root {
+      /* 默认深色主题令牌 (Dark Theme Defaults) */
+      --color-bg-canvas: #0b0f19;
+      --color-bg-surface: #111827;
+      --color-bg-panel: #1e293b;
+      --color-bg-subtle: #243047;
+      --color-bg-active: #334155;
+
+      --color-border-subtle: #1f293d;
+      --color-border-default: #374151;
+      --color-border-strong: #4b5563;
+
+      --color-text-primary: #f9fafb;
+      --color-text-secondary: #9ca3af;
+      --color-text-muted: #6b7280;
+
+      --color-accent-primary: #38bdf8;
+      --color-accent-hover: #0ea5e9;
+      --color-accent-subtle: rgba(56, 189, 248, 0.12);
+
+      --color-success: #10b981;
+      --color-success-bg: rgba(16, 185, 129, 0.15);
+      --color-warning: #f59e0b;
+      --color-warning-bg: rgba(245, 158, 11, 0.15);
+      --color-danger: #ef4444;
+      --color-danger-bg: rgba(239, 68, 68, 0.15);
+      --color-info: #6366f1;
+      --color-info-bg: rgba(99, 102, 241, 0.15);
+
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+      --font-mono: "JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-full: 9999px;
+
+      --shadow-panel: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+      --shadow-glow: 0 0 15px rgba(56, 189, 248, 0.25);
+
+      --terminal-bg: #050811;
+      --dock-bg: rgba(17, 24, 39, 0.95);
+    }
+
+    /* 浅色主题令牌覆盖 (Light Theme Class Overrides) */
+    body.light-theme {
+      --color-bg-canvas: #f8fafc;
+      --color-bg-surface: #ffffff;
+      --color-bg-panel: #ffffff;
+      --color-bg-subtle: #f1f5f9;
+      --color-bg-active: #e2e8f0;
+
+      --color-border-subtle: #f1f5f9;
+      --color-border-default: #e2e8f0;
+      --color-border-strong: #cbd5e1;
+
+      --color-text-primary: #0f172a;
+      --color-text-secondary: #475569;
+      --color-text-muted: #64748b;
+
+      --color-accent-primary: #0284c7;
+      --color-accent-hover: #0369a1;
+      --color-accent-subtle: rgba(2, 132, 199, 0.08);
+
+      --color-success: #059669;
+      --color-success-bg: rgba(5, 150, 105, 0.10);
+      --color-warning: #d97706;
+      --color-warning-bg: rgba(217, 119, 6, 0.10);
+      --color-danger: #dc2626;
+      --color-danger-bg: rgba(220, 38, 38, 0.10);
+      --color-info: #4f46e5;
+      --color-info-bg: rgba(79, 70, 229, 0.10);
+
+      --shadow-panel: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+      --shadow-glow: 0 0 12px rgba(2, 132, 199, 0.2);
+
+      --terminal-bg: #f8fafc;
+      --dock-bg: rgba(255, 255, 255, 0.95);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--color-bg-canvas);
+      color: var(--color-text-primary);
+      line-height: 1.5;
+      overflow-x: hidden;
+      height: 100vh;
+      display: flex;
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--color-bg-canvas); }
+    ::-webkit-scrollbar-thumb { background: var(--color-border-default); border-radius: var(--radius-full); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--color-border-strong); }
+
+    /* 应用外壳 */
+    .app-shell {
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      background-color: var(--color-bg-canvas);
+    }
+
+    /* 侧边栏 */
+    .sidebar {
+      width: 250px;
+      min-width: 250px;
+      background-color: var(--color-bg-surface);
+      border-right: 1px solid var(--color-border-subtle);
+      display: flex;
+      flex-direction: column;
+      z-index: 20;
+    }
+
+    .brand-header {
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--color-border-subtle);
+    }
+    .brand-logo {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, #0284c7, #6366f1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 12px rgba(14, 165, 233, 0.4);
+    }
+    .brand-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--color-text-primary);
+    }
+    .brand-subtitle {
+      font-size: 0.72rem;
+      color: var(--color-text-muted);
+    }
+
+    .nav-section-title {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+      padding: 16px 20px 8px 20px;
+    }
+
+    .nav-list {
+      list-style: none;
+      padding: 0 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
+      color: var(--color-text-secondary);
+      font-size: 0.88rem;
+      font-weight: 500;
+      cursor: pointer;
+      user-select: none;
+    }
+    .nav-item:hover {
+      background-color: var(--color-bg-subtle);
+      color: var(--color-text-primary);
+    }
+    .nav-item.active {
+      background-color: var(--color-accent-subtle);
+      color: var(--color-accent-primary);
+      border-left: 3px solid var(--color-accent-primary);
+      font-weight: 600;
+    }
+    .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 16px;
+      border-top: 1px solid var(--color-border-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .user-profile-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      background-color: var(--color-bg-subtle);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--color-border-subtle);
+    }
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-full);
+      background: linear-gradient(135deg, #10b981, #0284c7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 0.8rem;
+      color: #fff;
+    }
+    .user-info { flex: 1; overflow: hidden; }
+    .user-name { font-size: 0.84rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--color-text-primary); }
+    .user-role { font-size: 0.7rem; color: var(--color-text-muted); }
+
+    /* 主内容区 */
+    .main-viewport {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background-color: var(--color-bg-canvas);
+    }
+
+    /* 顶栏 */
+    .top-header {
+      height: 56px;
+      min-height: 56px;
+      background-color: var(--color-bg-surface);
+      border-bottom: 1px solid var(--color-border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 10;
+    }
+    .breadcrumb-area {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+    }
+    .breadcrumb-parent { color: var(--color-text-muted); }
+    .breadcrumb-current { font-weight: 600; color: var(--color-text-primary); }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* 主题快捷切换按钮 */
+    .theme-toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: var(--radius-full);
+      background-color: var(--color-bg-subtle);
+      border: 1px solid var(--color-border-default);
+      color: var(--color-text-primary);
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      user-select: none;
+    }
+    .theme-toggle-btn:hover {
+      border-color: var(--color-accent-primary);
+      color: var(--color-accent-primary);
+    }
+
+    .audio-control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background-color: var(--color-bg-subtle);
+      padding: 5px 10px;
+      border-radius: var(--radius-full);
+      border: 1px solid var(--color-border-subtle);
+    }
+    .audio-btn {
+      background: none;
+      border: none;
+      color: var(--color-accent-primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      padding: 2px;
+    }
+    .volume-slider {
+      width: 60px;
+      height: 4px;
+      -webkit-appearance: none;
+      background: var(--color-border-strong);
+      border-radius: 2px;
+      outline: none;
+    }
+    .volume-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--color-accent-primary);
+      cursor: pointer;
+    }
+
+    .view-content-wrapper {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      padding-bottom: 90px;
+    }
+
+    .page-view {
+      display: none;
+      flex-direction: column;
+      gap: 20px;
+      animation: fadeIn 0.2s ease;
+    }
+    .page-view.active { display: flex; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 卡片与按钮 */
+    .card-panel {
+      background-color: var(--color-bg-panel);
+      border: 1px solid var(--color-border-default);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: var(--shadow-panel);
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--color-text-primary);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: var(--radius-md);
+      font-size: 0.88rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid transparent;
+      user-select: none;
+    }
+    .btn-primary {
+      background-color: var(--color-accent-primary);
+      color: #fff;
+      font-weight: 600;
+    }
+    .btn-primary:hover {
+      background-color: var(--color-accent-hover);
+      box-shadow: var(--shadow-glow);
+    }
+    .btn-secondary {
+      background-color: var(--color-bg-subtle);
+      border-color: var(--color-border-default);
+      color: var(--color-text-primary);
+    }
+    .btn-secondary:hover {
+      background-color: var(--color-bg-active);
+      border-color: var(--color-border-strong);
+    }
+    .btn-danger {
+      background-color: var(--color-danger-bg);
+      border-color: var(--color-danger);
+      color: var(--color-danger);
+    }
+    .btn-sm { padding: 4px 10px; font-size: 0.78rem; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: var(--radius-full);
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .badge-success { background: var(--color-success-bg); color: var(--color-success); border: 1px solid var(--color-success); }
+    .badge-danger { background: var(--color-danger-bg); color: var(--color-danger); border: 1px solid var(--color-danger); }
+    .badge-warning { background: var(--color-warning-bg); color: var(--color-warning); border: 1px solid var(--color-warning); }
+    .badge-info { background: var(--color-info-bg); color: var(--color-accent-primary); border: 1px solid var(--color-accent-primary); }
+
+    .input-field {
+      background-color: var(--color-bg-subtle);
+      border: 1px solid var(--color-border-default);
+      border-radius: var(--radius-md);
+      padding: 8px 12px;
+      color: var(--color-text-primary);
+      font-family: var(--font-sans);
+      font-size: 0.88rem;
+      outline: none;
+    }
+    .input-field:focus {
+      border-color: var(--color-accent-primary);
+      box-shadow: 0 0 0 2px var(--color-accent-subtle);
+    }
+
+    /* 页面置换专用 */
+    .config-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: var(--color-bg-surface);
+      border: 1px solid var(--color-border-subtle);
+      border-radius: var(--radius-md);
+    }
+    .config-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
+
+    .reference-stream-box {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 12px 6px;
+    }
+    .ref-item {
+      width: 42px;
+      height: 48px;
+      background-color: var(--color-bg-subtle);
+      border: 1px solid var(--color-border-default);
+      border-radius: var(--radius-md);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-weight: bold;
+      font-size: 1.1rem;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .ref-item.current {
+      border-color: var(--color-accent-primary);
+      background-color: var(--color-accent-subtle);
+      box-shadow: var(--shadow-glow);
+      transform: translateY(-4px);
+    }
+    .ref-item.processed { opacity: 0.6; border-color: var(--color-border-subtle); }
+    .ref-item-step { font-size: 0.62rem; color: var(--color-text-muted); position: absolute; top: 2px; }
+
+    .frames-display-area {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .frame-slot-card {
+      background-color: var(--color-bg-surface);
+      border: 2px solid var(--color-border-default);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+    }
+    .frame-slot-card.hit {
+      border-color: var(--color-success);
+      box-shadow: 0 0 16px var(--color-success-bg);
+      background: linear-gradient(180deg, var(--color-success-bg), var(--color-bg-surface));
+    }
+    .frame-slot-card.miss {
+      border-color: var(--color-danger);
+      box-shadow: 0 0 16px var(--color-danger-bg);
+      background: linear-gradient(180deg, var(--color-danger-bg), var(--color-bg-surface));
+    }
+    .frame-slot-number {
+      font-size: 2rem;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--color-text-primary);
+    }
+    .frame-slot-label { font-size: 0.75rem; color: var(--color-text-secondary); }
+
+    .terminal-console {
+      background-color: var(--terminal-bg);
+      border: 1px solid var(--color-border-default);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      height: 160px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .log-row { display: flex; gap: 8px; }
+    .log-time { color: var(--color-text-muted); }
+    .log-info { color: var(--color-accent-primary); }
+    .log-hit { color: var(--color-success); font-weight: bold; }
+    .log-miss { color: var(--color-danger); font-weight: bold; }
+
+    /* 银行家矩阵专用 */
+    .matrix-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .matrix-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+      font-family: var(--font-mono);
+    }
+    .matrix-table th, .matrix-table td {
+      border: 1px solid var(--color-border-default);
+      padding: 6px 10px;
+      text-align: center;
+    }
+    .matrix-table th {
+      background-color: var(--color-bg-subtle);
+      color: var(--color-text-secondary);
+      font-weight: 600;
+    }
+    .matrix-table td { background-color: var(--color-bg-panel); color: var(--color-text-primary); }
+    .matrix-table tr.active td {
+      background-color: var(--color-accent-subtle);
+      color: var(--color-accent-primary);
+      font-weight: bold;
+    }
+
+    /* 多线程专用 */
+    .buffer-queue {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      padding: 20px;
+      background-color: var(--color-bg-subtle);
+      border-radius: var(--radius-md);
+      border: 1px dashed var(--color-border-strong);
+    }
+    .buffer-slot {
+      width: 60px;
+      height: 60px;
+      border: 2px solid var(--color-border-default);
+      border-radius: var(--radius-md);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-weight: bold;
+      background: var(--color-bg-panel);
+      position: relative;
+      color: var(--color-text-primary);
+    }
+    .buffer-slot.filled {
+      border-color: var(--color-accent-primary);
+      background-color: var(--color-accent-subtle);
+      color: var(--color-accent-primary);
+    }
+    .slot-idx { font-size: 0.6rem; position: absolute; top: 2px; color: var(--color-text-muted); }
+
+    .thread-monitor-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 12px;
+      border-bottom: 1px solid var(--color-border-subtle);
+    }
+    .thread-name { width: 110px; font-weight: 600; font-size: 0.88rem; color: var(--color-text-primary); }
+    .thread-progress-bar {
+      flex: 1;
+      height: 10px;
+      background-color: var(--color-bg-subtle);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+      position: relative;
+    }
+    .thread-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #0284c7, #059669);
+      border-radius: var(--radius-full);
+    }
+
+    /* AI 对话专用 */
+    .chat-layout {
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 190px);
+      background-color: var(--color-bg-panel);
+      border: 1px solid var(--color-border-default);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .chat-messages-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .message-card { display: flex; gap: 14px; max-width: 85%; }
+    .message-card.user { align-self: flex-end; flex-direction: row-reverse; }
+    .message-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: var(--radius-full);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: #fff;
+    }
+    .avatar-ai { background: linear-gradient(135deg, #0ea5e9, #6366f1); }
+    .avatar-user { background: linear-gradient(135deg, #10b981, #059669); }
+    .message-bubble {
+      background-color: var(--color-bg-subtle);
+      border: 1px solid var(--color-border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 16px 18px;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      color: var(--color-text-primary);
+    }
+    .message-card.user .message-bubble {
+      background-color: var(--color-accent-subtle);
+      border-color: var(--color-accent-primary);
+      color: var(--color-text-primary);
+    }
+    .code-block {
+      background-color: var(--terminal-bg);
+      border: 1px solid var(--color-border-default);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      margin: 10px 0;
+      color: var(--color-accent-primary);
+      overflow-x: auto;
+    }
+    .typing-cursor {
+      display: inline-block;
+      width: 8px;
+      height: 16px;
+      background-color: var(--color-accent-primary);
+      margin-left: 4px;
+      animation: blink 0.8s infinite;
+      vertical-align: middle;
+    }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+    .chat-input-dock {
+      padding: 16px;
+      background-color: var(--color-bg-surface);
+      border-top: 1px solid var(--color-border-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .chat-textarea {
+      width: 100%;
+      height: 72px;
+      background-color: var(--color-bg-subtle);
+      border: 1px solid var(--color-border-default);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      color: var(--color-text-primary);
+      font-family: var(--font-sans);
+      font-size: 0.9rem;
+      resize: none;
+      outline: none;
+    }
+    .chat-textarea:focus { border-color: var(--color-accent-primary); }
+    .chat-dock-actions { display: flex; justify-content: space-between; align-items: center; }
+
+    /* 登录容器 */
+    .login-container { max-width: 420px; margin: 40px auto; width: 100%; }
+
+    /* 模型引擎设置专有样式 */
+    .engine-tab-bar {
+      display: flex;
+      gap: 12px;
+      border-bottom: 1px solid var(--color-border-subtle);
+      margin-bottom: 20px;
+    }
+    .engine-tab-btn {
+      padding: 10px 18px;
+      background: none;
+      border: none;
+      color: var(--color-text-secondary);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .engine-tab-btn.active {
+      color: var(--color-accent-primary);
+      border-bottom-color: var(--color-accent-primary);
+    }
+
+    .providers-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .provider-card {
+      background-color: var(--color-bg-subtle);
+      border: 1px solid var(--color-border-default);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .provider-card:hover {
+      border-color: var(--color-border-strong);
+      background-color: var(--color-bg-active);
+    }
+    .provider-card.selected {
+      border-color: var(--color-accent-primary);
+      background-color: var(--color-accent-subtle);
+    }
+    .provider-name { font-size: 0.85rem; font-weight: bold; color: var(--color-text-primary); }
+    .provider-type { font-size: 0.7rem; color: var(--color-text-muted); }
+
+    .model-card-item {
+      background-color: var(--color-bg-subtle);
+      border: 1px solid var(--color-border-default);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .model-card-header { display: flex; justify-content: space-between; align-items: flex-start; }
+
+    /* 底部播放控制条 */
+    .playback-dock {
+      position: fixed;
+      bottom: 0;
+      left: 250px;
+      right: 0;
+      height: 68px;
+      background-color: var(--dock-bg);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid var(--color-border-default);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      z-index: 50;
+      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+    }
+    .dock-controls { display: flex; align-items: center; gap: 12px; }
+    .dock-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-full);
+      background-color: var(--color-bg-subtle);
+      border: 1px solid var(--color-border-default);
+      color: var(--color-text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .dock-btn:hover {
+      background-color: var(--color-bg-active);
+      border-color: var(--color-accent-primary);
+      color: var(--color-accent-primary);
+    }
+    .dock-btn-main {
+      width: 44px;
+      height: 44px;
+      background: var(--color-accent-primary);
+      color: #fff;
+      border: none;
+      box-shadow: var(--shadow-glow);
+    }
+    .dock-btn-main:hover { background-color: var(--color-accent-hover); }
+
+    .timeline-scrubber {
+      flex: 1;
+      max-width: 500px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin: 0 24px;
+    }
+    .timeline-slider {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--color-border-default);
+      outline: none;
+    }
+    .timeline-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--color-accent-primary);
+      cursor: pointer;
+    }
+    .step-counter {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: var(--color-text-secondary);
+      min-width: 80px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-shell">
+    <!-- 左侧侧边栏 -->
+    <aside class="sidebar">
+      <div class="brand-header">
+        <div class="brand-logo">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title">OS Visualizer</div>
+          <div class="brand-subtitle">操作系统核心原理教学平台</div>
+        </div>
+      </div>
+
+      <div class="nav-section-title">算法仿真实验</div>
+      <ul class="nav-list">
+        <li class="nav-item active" data-target="view-page-rep">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h7"/></svg>
+          页面置换算法
+        </li>
+        <li class="nav-item" data-target="view-banker">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          银行家算法
+        </li>
+        <li class="nav-item" data-target="view-threads">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          多线程并发演示
+        </li>
+      </ul>
+
+      <div class="nav-section-title">AI 助教与引擎设置</div>
+      <ul class="nav-list">
+        <li class="nav-item" data-target="view-ai-chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          AI 助教对话
+        </li>
+        <li class="nav-item" data-target="view-engine-settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          模型引擎设置
+        </li>
+        <li class="nav-item" data-target="view-settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          系统通用设置
+        </li>
+        <li class="nav-item" data-target="view-login">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+          登录 / 注册
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <div class="user-profile-badge">
+          <div class="user-avatar">游</div>
+          <div class="user-info">
+            <div class="user-name">游客用户</div>
+            <div class="user-role">体验模式 (未登录)</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 右侧主视口 -->
+    <main class="main-viewport">
+      <!-- 顶部 Header -->
+      <header class="top-header">
+        <div class="breadcrumb-area">
+          <span class="breadcrumb-parent">平台导航 /</span>
+          <span class="breadcrumb-current" id="header-page-title">页面置换算法 (Page Replacement)</span>
+        </div>
+
+        <div class="header-actions">
+          <!-- 主题切换快捷按钮 -->
+          <button class="theme-toggle-btn" id="btn-toggle-theme" title="切换浅色 / 深色模式">
+            <span id="theme-btn-icon">☀️</span>
+            <span id="theme-btn-text">浅色模式</span>
+          </button>
+
+          <!-- Web Audio 音效控制器 -->
+          <div class="audio-control-group">
+            <button class="audio-btn" id="btn-toggle-sound" title="一键静音/开启音效">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+            </button>
+            <input type="range" class="volume-slider" id="volume-range" min="0" max="1" step="0.05" value="0.7" title="全局音量">
+            <button class="btn btn-secondary btn-sm" id="btn-test-sound">测试音效</button>
+          </div>
+
+          <button class="btn btn-primary btn-sm" id="top-btn-login">登录账户</button>
+        </div>
+      </header>
+
+      <!-- 视图容器 -->
+      <div class="view-content-wrapper">
+
+        <!-- ==========================================
+             页面 1：页面置换算法
+             ========================================== -->
+        <section id="view-page-rep" class="page-view active">
+          <div class="config-bar">
+            <div class="config-item">
+              <label><strong>置换算法：</strong></label>
+              <select class="input-field" id="rep-algo-select">
+                <option value="FIFO">FIFO (先进先出)</option>
+                <option value="LRU" selected>LRU (最近最久未使用)</option>
+                <option value="OPT">OPT (最佳置换)</option>
+                <option value="CLOCK">CLOCK (时钟置换)</option>
+              </select>
+            </div>
+
+            <div class="config-item" style="flex: 1; min-width: 280px;">
+              <label><strong>页面访问串：</strong></label>
+              <input type="text" class="input-field" style="width: 100%;" id="rep-ref-input" value="7, 0, 1, 2, 0, 3, 0, 4, 2, 3, 0, 3, 2">
+            </div>
+
+            <div class="config-item">
+              <label><strong>页框数：</strong></label>
+              <input type="number" class="input-field" id="rep-frame-count" min="2" max="6" value="3" style="width: 60px;">
+            </div>
+
+            <button class="btn btn-secondary btn-sm" id="rep-btn-random">🎲 随机串</button>
+            <button class="btn btn-primary btn-sm" id="rep-btn-restart">⚡ 重新生成轨迹</button>
+          </div>
+
+          <div class="card-panel">
+            <div class="card-header">
+              <div class="card-title">
+                <span>页面访问参考序列</span>
+                <span class="badge badge-info" id="rep-current-step-badge">当前步：第 6 步 / 访问页面 3</span>
+              </div>
+              <div id="rep-status-badge" class="badge badge-danger">❌ 发生缺页 (Page Fault)</div>
+            </div>
+            <div class="reference-stream-box" id="rep-stream-container"></div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+            <div class="card-panel">
+              <div class="card-header">
+                <div class="card-title">物理页框 (Memory Frames) 实时状态</div>
+                <span class="badge badge-warning">容量: 3 块</span>
+              </div>
+              <div class="frames-display-area" id="rep-frames-container"></div>
+            </div>
+
+            <div class="card-panel">
+              <div class="card-header">
+                <div class="card-title">实时指标看板</div>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; text-align: center;">
+                <div style="background: var(--color-bg-subtle); padding: 12px; border-radius: var(--radius-md);">
+                  <div style="font-size: 0.75rem; color: var(--color-text-muted);">访问总数</div>
+                  <div style="font-size: 1.5rem; font-weight: bold; color: var(--color-text-primary);" id="metric-total">6</div>
+                </div>
+                <div style="background: var(--color-bg-subtle); padding: 12px; border-radius: var(--radius-md);">
+                  <div style="font-size: 0.75rem; color: var(--color-text-muted);">缺页次数</div>
+                  <div style="font-size: 1.5rem; font-weight: bold; color: var(--color-danger);" id="metric-faults">5</div>
+                </div>
+                <div style="background: var(--color-bg-subtle); padding: 12px; border-radius: var(--radius-md);">
+                  <div style="font-size: 0.75rem; color: var(--color-text-muted);">命中次数</div>
+                  <div style="font-size: 1.5rem; font-weight: bold; color: var(--color-success);" id="metric-hits">1</div>
+                </div>
+                <div style="background: var(--color-bg-subtle); padding: 12px; border-radius: var(--radius-md);">
+                  <div style="font-size: 0.75rem; color: var(--color-text-muted);">缺页率</div>
+                  <div style="font-size: 1.5rem; font-weight: bold; color: var(--color-danger);" id="metric-rate">83.3%</div>
+                </div>
+              </div>
+              <div style="margin-top: 16px; padding: 12px; background: var(--color-bg-subtle); border-radius: var(--radius-md); font-size: 0.8rem; color: var(--color-text-secondary);" id="rep-principle-text">
+                <strong>LRU 置换原理解析：</strong><br>
+                页面 3 请求载入，物理块已满。检查页框内驻留页面历史使用记录，页面 0 最久未被访问，将其淘汰换出。
+              </div>
+            </div>
+          </div>
+
+          <div class="card-panel">
+            <div class="card-header">
+              <div class="card-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+                算法执行控制台日志 (Console Execution Log)
+              </div>
+              <button class="btn btn-secondary btn-sm" id="btn-clear-rep-log">清空日志</button>
+            </div>
+            <div class="terminal-console" id="rep-terminal-log"></div>
+          </div>
+        </section>
+
+        <!-- ==========================================
+             页面 2：银行家算法
+             ========================================== -->
+        <section id="view-banker" class="page-view">
+          <div class="card-panel">
+            <div class="card-header">
+              <div class="card-title">系统当前资源矩阵状态配置</div>
+              <div style="display: flex; gap: 8px;">
+                <button class="btn btn-secondary btn-sm">📋 粘贴导入</button>
+                <button class="btn btn-primary btn-sm" id="btn-run-banker-check">🔍 执行安全性检查</button>
+              </div>
+            </div>
+
+            <div class="matrix-grid">
+              <div>
+                <h4 style="font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: 8px;">Max (最大需求矩阵)</h4>
+                <table class="matrix-table">
+                  <thead><tr><th>进程</th><th>A</th><th>B</th><th>C</th></tr></thead>
+                  <tbody>
+                    <tr><td>P0</td><td>7</td><td>5</td><td>3</td></tr>
+                    <tr class="active"><td>P1</td><td>3</td><td>2</td><td>2</td></tr>
+                    <tr><td>P2</td><td>9</td><td>0</td><td>2</td></tr>
+                    <tr><td>P3</td><td>2</td><td>2</td><td>2</td></tr>
+                    <tr><td>P4</td><td>4</td><td>3</td><td>3</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div>
+                <h4 style="font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: 8px;">Allocation (已分配矩阵)</h4>
+                <table class="matrix-table">
+                  <thead><tr><th>进程</th><th>A</th><th>B</th><th>C</th></tr></thead>
+                  <tbody>
+                    <tr><td>P0</td><td>0</td><td>1</td><td>0</td></tr>
+                    <tr class="active"><td>P1</td><td>2</td><td>0</td><td>0</td></tr>
+                    <tr><td>P2</td><td>3</td><td>0</td><td>2</td></tr>
+                    <tr><td>P3</td><td>2</td><td>1</td><td>1</td></tr>
+                    <tr><td>P4</td><td>0</td><td>0</td><td>2</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div>
+                <h4 style="font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: 8px;">Need (需求矩阵 = Max - Alloc)</h4>
+                <table class="matrix-table">
+                  <thead><tr><th>进程</th><th>A</th><th>B</th><th>C</th></tr></thead>
+                  <tbody>
+                    <tr><td>P0</td><td>7</td><td>4</td><td>3</td></tr>
+                    <tr class="active"><td>P1</td><td>1</td><td>2</td><td>2</td></tr>
+                    <tr><td>P2</td><td>6</td><td>0</td><td>0</td></tr>
+                    <tr><td>P3</td><td>0</td><td>1</td><td>1</td></tr>
+                    <tr><td>P4</td><td>4</td><td>3</td><td>1</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div>
+                <h4 style="font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: 8px;">Available (当前可用资源)</h4>
+                <div style="background: var(--color-bg-subtle); padding: 18px; border-radius: var(--radius-md); text-align: center; border: 1px solid var(--color-border-subtle);">
+                  <div style="display: flex; justify-content: space-around; font-family: var(--font-mono);">
+                    <div><span style="color:var(--color-text-muted);">A:</span> <strong style="font-size:1.4rem; color:var(--color-accent-primary)">3</strong></div>
+                    <div><span style="color:var(--color-text-muted);">B:</span> <strong style="font-size:1.4rem; color:var(--color-accent-primary)">3</strong></div>
+                    <div><span style="color:var(--color-text-muted);">C:</span> <strong style="font-size:1.4rem; color:var(--color-accent-primary)">2</strong></div>
+                  </div>
+                  <div style="margin-top: 10px; font-size: 0.75rem; color: var(--color-success);">系统当前状态：安全 (Safe)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-panel">
+            <div class="card-header">
+              <div class="card-title">安全性推导演进 (Work & Finish 判定序列)</div>
+              <span class="badge badge-success">已找到安全序列: P1 ➔ P3 ➔ P4 ➔ P0 ➔ P2</span>
+            </div>
+            <table class="matrix-table" style="text-align: left;">
+              <thead>
+                <tr>
+                  <th>检查步骤</th>
+                  <th>选中进程</th>
+                  <th>Work (可用)</th>
+                  <th>Need (需求)</th>
+                  <th>Allocation (已占)</th>
+                  <th>Work + Allocation (释放后)</th>
+                  <th>Finish 状态</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="background: var(--color-success-bg);">
+                  <td>步骤 1</td>
+                  <td><strong>P1</strong></td>
+                  <td>(3, 3, 2)</td>
+                  <td>(1, 2, 2) &le; Work ✅</td>
+                  <td>(2, 0, 0)</td>
+                  <td><strong>(5, 3, 2)</strong></td>
+                  <td><span class="badge badge-success">TRUE</span></td>
+                </tr>
+                <tr style="background: var(--color-success-bg);">
+                  <td>步骤 2</td>
+                  <td><strong>P3</strong></td>
+                  <td>(5, 3, 2)</td>
+                  <td>(0, 1, 1) &le; Work ✅</td>
+                  <td>(2, 1, 1)</td>
+                  <td><strong>(7, 4, 3)</strong></td>
+                  <td><span class="badge badge-success">TRUE</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ==========================================
+             页面 3：多线程并发演示
+             ========================================== -->
+        <section id="view-threads" class="page-view">
+          <div class="card-panel">
+            <div class="card-header">
+              <div class="card-title">有界缓冲区生产者-消费者模型 (Bounded-Buffer Problem)</div>
+              <div style="display: flex; gap: 8px;">
+                <span class="badge badge-info">容量: 5 格</span>
+                <span class="badge badge-success">互斥锁 Mutex: 1 (空闲)</span>
+              </div>
+            </div>
+
+            <div class="buffer-queue">
+              <div class="buffer-slot filled"><span class="slot-idx">#0</span><span>P101</span></div>
+              <div class="buffer-slot filled"><span class="slot-idx">#1</span><span>P102</span></div>
+              <div class="buffer-slot filled"><span class="slot-idx">#2</span><span>P103</span></div>
+              <div class="buffer-slot"><span class="slot-idx">#3</span><span style="color:var(--color-text-muted); font-size:0.75rem;">(空)</span></div>
+              <div class="buffer-slot"><span class="slot-idx">#4</span><span style="color:var(--color-text-muted); font-size:0.75rem;">(空)</span></div>
+            </div>
+
+            <div style="display: flex; justify-content: space-around; margin-top: 14px; font-size: 0.85rem;">
+              <div>信号量 <code>empty</code>: <strong style="color:var(--color-accent-primary)">2</strong> (剩余空槽)</div>
+              <div>信号量 <code>full</code>: <strong style="color:var(--color-warning)">3</strong> (已产产品)</div>
+              <div>临界区锁 <code>mutex</code>: <strong style="color:var(--color-success)">1</strong> (可抢占)</div>
+            </div>
+          </div>
+
+          <div class="card-panel">
+            <div class="card-header"><div class="card-title">并发线程生命周期与指令追踪</div></div>
+            <div class="thread-monitor-row">
+              <div class="thread-name">生产者 P1</div>
+              <span class="badge badge-success">RUNNING 生产中</span>
+              <div class="thread-progress-bar"><div class="thread-progress-fill" style="width: 80%;"></div></div>
+              <div style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--color-accent-primary);">insert_item(104);</div>
+            </div>
+            <div class="thread-monitor-row">
+              <div class="thread-name">生产者 P2</div>
+              <span class="badge badge-warning">BLOCKED 等空位</span>
+              <div class="thread-progress-bar"><div class="thread-progress-fill" style="width: 25%; background: var(--color-warning);"></div></div>
+              <div style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--color-text-muted);">P(empty);</div>
+            </div>
+            <div class="thread-monitor-row">
+              <div class="thread-name">消费者 C1</div>
+              <span class="badge badge-success">RUNNING 消费中</span>
+              <div class="thread-progress-bar"><div class="thread-progress-fill" style="width: 60%;"></div></div>
+              <div style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--color-accent-primary);">remove_item();</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==========================================
+             页面 4：AI 助教对话
+             ========================================== -->
+        <section id="view-ai-chat" class="page-view">
+          <div class="chat-layout">
+            <div style="padding: 10px 16px; background: var(--color-bg-subtle); border-bottom: 1px solid var(--color-border-subtle); display: flex; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 0.84rem;">
+                <span style="color: var(--color-text-muted);">当前 AI 对话引擎：</span>
+                <select class="input-field" style="padding: 4px 8px; font-size: 0.82rem;">
+                  <option>火山方舟 (豆包 ep-20240713) [云端推荐]</option>
+                  <option>DeepSeek-V3 (官方原生)</option>
+                  <option>本地 Ollama (qwen2.5:1.5b) [极速离线]</option>
+                  <option>自定义中转 API (OneAPI/NewAPI)</option>
+                </select>
+              </div>
+              <button class="btn btn-secondary btn-sm" id="btn-jump-engine-settings">⚙ 引擎设置</button>
+            </div>
+
+            <div class="chat-messages-container" id="chat-messages-box">
+              <div class="message-card">
+                <div class="message-avatar avatar-ai">AI</div>
+                <div class="message-bubble">
+                  <strong>OS 教学助教</strong>
+                  <p style="margin-top: 6px;">你好！我是操作系统可视化教学助教。支持双主题切换、全厂商大模型与本地 Ollama。你可以随时向我提问关于虚拟内存、页表映射、银行家死锁判定或线程同步互斥的核心原理！</p>
+                </div>
+              </div>
+
+              <div class="message-card user">
+                <div class="message-avatar avatar-user">我</div>
+                <div class="message-bubble">
+                  请解释为什么在页面置换算法中，FIFO 会出现 Belady 异常，而 LRU 不会？
+                </div>
+              </div>
+
+              <div class="message-card">
+                <div class="message-avatar avatar-ai">AI</div>
+                <div class="message-bubble">
+                  <strong>OS 教学助教</strong>
+                  <p style="margin-top: 6px;">核心原因在于**堆栈类算法（Stack Algorithm）**的数学性质差异：</p>
+                  <ul style="margin-left: 20px; margin-top: 4px;">
+                    <li><strong>LRU 是堆栈类算法</strong>：满足包容性质 $S(n) \subseteq S(n+1)$。分配 $n$ 块时留在内存的集合永远是分配 $n+1$ 块时的子集，因此绝对不会产生 Belady 异常。</li>
+                    <li><strong>FIFO 不是堆栈类算法</strong>：仅依据入队先后淘汰，较早进入的页面可能立刻再次被需要。</li>
+                  </ul>
+                  <div class="code-block">
+// FIFO 淘汰队列头部的最老页面
+int victim_frame = frame_queue.pop_front();
+                  </div>
+                  <span style="font-size: 0.75rem; color: var(--color-text-muted);">来自模型流式输出</span><span class="typing-cursor"></span>
+                </div>
+              </div>
+            </div>
+
+            <div style="padding: 0 16px; display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="btn btn-secondary btn-sm prompt-chip">💡 什么是 Belady 异常？</button>
+              <button class="btn btn-secondary btn-sm prompt-chip">💡 银行家算法如何避免死锁？</button>
+              <button class="btn btn-secondary btn-sm prompt-chip">💡 生产者消费者为什么需要两个信号量？</button>
+            </div>
+
+            <div class="chat-input-dock">
+              <textarea class="chat-textarea" placeholder="输入你想探讨的操作系统内核概念，Enter 发送，Shift+Enter 换行..."></textarea>
+              <div class="chat-dock-actions">
+                <label style="font-size: 0.78rem; color: var(--color-text-muted); display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                  <input type="checkbox" checked> 附带当前页面算法快照作为上下文
+                </label>
+                <div style="display: flex; gap: 8px;">
+                  <button class="btn btn-secondary btn-sm">⏹ 停止生成</button>
+                  <button class="btn btn-primary btn-sm">🚀 发送提问</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==========================================
+             页面 5：模型引擎设置
+             ========================================== -->
+        <section id="view-engine-settings" class="page-view">
+          <div class="card-panel">
+            <div class="card-header">
+              <div class="card-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                AI 引擎与本地模型管理中心
+              </div>
+              <span class="badge badge-success">统一接口：REST / SSE</span>
+            </div>
+
+            <div class="engine-tab-bar">
+              <button class="engine-tab-btn active" data-tab="tab-providers">主流厂商模板 (12家)</button>
+              <button class="engine-tab-btn" data-tab="tab-custom">自定义中转 API</button>
+              <button class="engine-tab-btn" data-tab="tab-local-deploy">本地部署接入 (Ollama等)</button>
+              <button class="engine-tab-btn" data-tab="tab-small-models">内置离线小模型下载 (4款)</button>
+            </div>
+
+            <!-- TAB 1: 12 厂商模板 -->
+            <div id="tab-providers" class="engine-sub-tab">
+              <div class="providers-grid">
+                <div class="provider-card selected" data-pname="火山方舟 (豆包 Doubao)" data-base="https://ark.cn-beijing.volces.com/api/v3" data-model="ep-20240713-2fgvv">
+                  <div class="provider-name">火山方舟 (豆包)</div>
+                  <div class="provider-type">字节跳动 / 官方兼容</div>
+                </div>
+                <div class="provider-card" data-pname="DeepSeek" data-base="https://api.deepseek.com/v1" data-model="deepseek-chat">
+                  <div class="provider-name">DeepSeek</div>
+                  <div class="provider-type">深度求索 / 官方原生</div>
+                </div>
+                <div class="provider-card" data-pname="OpenAI" data-base="https://api.openai.com/v1" data-model="gpt-4o-mini">
+                  <div class="provider-name">OpenAI</div>
+                  <div class="provider-type">官方标准 / 原生协议</div>
+                </div>
+                <div class="provider-card" data-pname="Anthropic Claude" data-base="https://api.anthropic.com/v1" data-model="claude-3-5-sonnet-20241022">
+                  <div class="provider-name">Claude (Anthropic)</div>
+                  <div class="provider-type">Messages 协议</div>
+                </div>
+                <div class="provider-card" data-pname="Google Gemini" data-base="https://generativelanguage.googleapis.com/v1beta/openai/" data-model="gemini-1.5-flash">
+                  <div class="provider-name">Google Gemini</div>
+                  <div class="provider-type">OpenAI 兼容端点</div>
+                </div>
+                <div class="provider-card" data-pname="阿里云百炼 (DashScope)" data-base="https://dashscope.aliyuncs.com/compatible-mode/v1" data-model="qwen-plus">
+                  <div class="provider-name">阿里云百炼 (通义)</div>
+                  <div class="provider-type">兼容端点模式</div>
+                </div>
+                <div class="provider-card" data-pname="硅基流动 SiliconFlow" data-base="https://api.siliconflow.cn/v1" data-model="deepseek-ai/DeepSeek-V3">
+                  <div class="provider-name">硅基流动</div>
+                  <div class="provider-type">极速推理云</div>
+                </div>
+                <div class="provider-card" data-pname="Groq" data-base="https://api.groq.com/openai/v1" data-model="llama-3.3-70b-versatile">
+                  <div class="provider-name">Groq (LPU)</div>
+                  <div class="provider-type">超低延迟流式</div>
+                </div>
+                <div class="provider-card" data-pname="OpenRouter" data-base="https://openrouter.ai/api/v1" data-model="meta-llama/llama-3.3-70b-instruct">
+                  <div class="provider-name">OpenRouter</div>
+                  <div class="provider-type">全球聚合路由</div>
+                </div>
+                <div class="provider-card" data-pname="Moonshot Kimi" data-base="https://api.moonshot.cn/v1" data-model="moonshot-v1-8k">
+                  <div class="provider-name">Moonshot Kimi</div>
+                  <div class="provider-type">长上下文月之暗面</div>
+                </div>
+                <div class="provider-card" data-pname="智谱 GLM" data-base="https://open.bigmodel.cn/api/paas/v4" data-model="glm-4-flash">
+                  <div class="provider-name">智谱 GLM</div>
+                  <div class="provider-type">清言大模型</div>
+                </div>
+                <div class="provider-card" data-pname="通用中转 / 自定义" data-base="https://api.your-proxy.com/v1" data-model="custom-model">
+                  <div class="provider-name">自定义中转 API</div>
+                  <div class="provider-type">OneAPI / NewAPI</div>
+                </div>
+              </div>
+
+              <div style="background: var(--color-bg-subtle); padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--color-border-subtle); display: flex; flex-direction: column; gap: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <h3 id="current-pname" style="font-size: 1rem; color: var(--color-accent-primary);">当前配置：火山方舟 (豆包 Doubao)</h3>
+                  <button class="btn btn-secondary btn-sm" id="btn-ping-test">⚡ 测试连接状态</button>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                  <div>
+                    <label style="font-size: 0.8rem; color: var(--color-text-secondary); display: block; margin-bottom: 4px;">服务基地址 (Base URL)</label>
+                    <input type="text" class="input-field" id="current-pbase" style="width: 100%; font-family: var(--font-mono);" value="https://ark.cn-beijing.volces.com/api/v3">
+                  </div>
+                  <div>
+                    <label style="font-size: 0.8rem; color: var(--color-text-secondary); display: block; margin-bottom: 4px;">模型名称 / Endpoint ID (model)</label>
+                    <input type="text" class="input-field" id="current-pmodel" style="width: 100%; font-family: var(--font-mono);" value="ep-20240713-2fgvv">
+                  </div>
+                </div>
+
+                <div>
+                  <label style="font-size: 0.8rem; color: var(--color-text-secondary); display: block; margin-bottom: 4px;">API Key (密码掩码安全显示)</label>
+                  <div style="display: flex; gap: 8px;">
+                    <input type="password" class="input-field" style="flex: 1;" value="sk-ark-live-demo-token-93821034">
+                    <button class="btn btn-secondary btn-sm">👁</button>
+                  </div>
+                  <span style="font-size: 0.72rem; color: var(--color-text-muted);">秘钥仅由后端服务通过安全受控代理转发，绝不随代码入库。</span>
+                </div>
+
+                <div id="ping-result-box" style="display: none; padding: 12px; border-radius: var(--radius-md); font-size: 0.82rem;"></div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                  <button class="btn btn-secondary btn-sm">设为默认助教</button>
+                  <button class="btn btn-primary btn-sm">保存厂商配置</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 2: 自定义中转 API -->
+            <div id="tab-custom" class="engine-sub-tab" style="display: none;">
+              <div style="background: var(--color-bg-subtle); padding: 20px; border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 16px;">
+                <h3 style="font-size: 0.95rem; font-weight: bold;">接入自定义 OpenAI 兼容中转网关 (OneAPI / NewAPI / 个人反代)</h3>
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px;">
+                  <div>
+                    <label style="font-size: 0.8rem; color: var(--color-text-secondary); display: block; margin-bottom: 4px;">自定义 Base URL</label>
+                    <input type="text" class="input-field" style="width: 100%; font-family: var(--font-mono);" value="https://api.openai-proxy.org/v1">
+                  </div>
+                  <div>
+                    <label style="font-size: 0.8rem; color: var(--color-text-secondary); display: block; margin-bottom: 4px;">自定义模型标识</label>
+                    <input type="text" class="input-field" style="width: 100%; font-family: var(--font-mono);" value="gpt-4o-all">
+                  </div>
+                </div>
+
+                <div>
+                  <label style="font-size: 0.8rem; color: var(--color-text-secondary); display: block; margin-bottom: 4px;">中转令牌 (API Key)</label>
+                  <input type="password" class="input-field" style="width: 100%;" value="sk-oneapi-custom-token-secret">
+                </div>
+
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                  <button class="btn btn-secondary btn-sm" onclick="alert('测试中转成功：HTTP 200 OK，响应延迟 96ms')">⚡ 测试中转可用性</button>
+                  <button class="btn btn-primary btn-sm">保存中转设置</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 3: 本地部署 (Ollama) -->
+            <div id="tab-local-deploy" class="engine-sub-tab" style="display: none;">
+              <div style="background: var(--color-bg-subtle); padding: 20px; border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <div>
+                    <h3 style="font-size: 0.95rem; font-weight: bold;">本地推理后端服务探测 (Local Inference Engine)</h3>
+                    <p style="font-size: 0.75rem; color: var(--color-text-muted);">适用于学校机房、无网离线或纯内网环境</p>
+                  </div>
+                  <button class="btn btn-primary btn-sm" id="btn-detect-ollama">🔍 一键探测本地 Ollama</button>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                  <div style="background: var(--color-bg-panel); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border-subtle);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <strong>Ollama 守护进程</strong>
+                      <span class="badge badge-success" id="ollama-status-badge">🟢 运行中 (Port: 11434)</span>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 0.8rem; color: var(--color-text-secondary);">
+                      接口端点: <code>http://localhost:11434/v1</code><br>
+                      已探测到模型: <strong style="color:var(--color-accent-primary)">qwen2.5:1.5b</strong>, <strong>deepseek-r1:1.5b</strong>
+                    </div>
+                  </div>
+
+                  <div style="background: var(--color-bg-panel); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border-subtle);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <strong>LM Studio / llama.cpp</strong>
+                      <span class="badge" style="background:var(--color-bg-subtle); color:var(--color-text-muted);">未运行 (Port: 1234)</span>
+                    </div>
+                    <div style="margin-top: 10px; font-size: 0.8rem; color: var(--color-text-secondary);">
+                      接口端点: <code>http://localhost:1234/v1</code><br>
+                      启动方式: 打开软件并在 Local Server 选项卡点击 Start
+                    </div>
+                  </div>
+                </div>
+
+                <div style="padding: 12px; background: var(--color-accent-subtle); border-radius: var(--radius-md); font-size: 0.8rem;">
+                  💡 <strong>一键接入本地模型：</strong>系统已自动挂载 <code>qwen2.5:1.5b</code>，点击右侧按钮可直接将其作为全局助教。<br>
+                  命令行快捷拉取新模型：<code>ollama pull qwen2.5:1.5b</code>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 4: 内置小模型下载 -->
+            <div id="tab-small-models" class="engine-sub-tab" style="display: none;">
+              <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-size: 0.84rem; color: var(--color-text-secondary);">
+                  已下载磁盘占用：<strong>1.37 GB</strong> / 预估剩余可用 42.8 GB
+                </div>
+                <span class="badge badge-info">纯 CPU 可跑 · 免显卡</span>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 14px;">
+                <div class="model-card-item">
+                  <div class="model-card-header">
+                    <div>
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <strong style="font-size: 0.95rem;">Qwen2.5-0.5B-Instruct (GGUF Q4)</strong>
+                        <span class="badge badge-success">已就绪 (READY)</span>
+                      </div>
+                      <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 4px;">
+                        参数量: 0.5B | 体积: 390 MB | 许可证: Apache 2.0 | CPU 速度: ~45 tokens/s
+                      </div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                      <button class="btn btn-secondary btn-sm btn-danger">🗑 删除</button>
+                      <button class="btn btn-primary btn-sm">🚀 启用此模型</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="model-card-item" style="border-color: var(--color-warning);">
+                  <div class="model-card-header">
+                    <div>
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <strong style="font-size: 0.95rem;">Qwen2.5-1.5B-Instruct (GGUF Q4)</strong>
+                        <span class="badge badge-warning">下载中 (DOWNLOADING 45.6%)</span>
+                      </div>
+                      <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 4px;">
+                        参数量: 1.5B | 体积: 980 MB | 速率: 12.8 MB/s | 已下载: 446MB / 980MB
+                      </div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                      <button class="btn btn-secondary btn-sm">⏸ 暂停</button>
+                      <button class="btn btn-secondary btn-sm btn-danger">✖ 取消</button>
+                    </div>
+                  </div>
+                  <div style="height: 6px; background: var(--color-bg-subtle); border-radius: 3px; overflow: hidden; margin-top: 6px;">
+                    <div style="width: 45.6%; height: 100%; background: var(--color-warning);"></div>
+                  </div>
+                </div>
+
+                <div class="model-card-item">
+                  <div class="model-card-header">
+                    <div>
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <strong style="font-size: 0.95rem;">DeepSeek-R1-Distill-Qwen-1.5B</strong>
+                        <span class="badge" style="background:var(--color-bg-subtle); color:var(--color-text-muted);">未下载</span>
+                      </div>
+                      <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 4px;">
+                        参数量: 1.5B | 体积: 1.1 GB | 许可证: MIT | 特点: 强化学习思考链推导
+                      </div>
+                    </div>
+                    <button class="btn btn-secondary btn-sm">⬇️ 一键下载到本地</button>
+                  </div>
+                </div>
+
+                <div class="model-card-item" style="border-color: var(--color-danger);">
+                  <div class="model-card-header">
+                    <div>
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <strong style="font-size: 0.95rem;">Llama-3.2-1B-Instruct</strong>
+                        <span class="badge badge-danger">加载失败 (ERROR)</span>
+                      </div>
+                      <div style="font-size: 0.75rem; color: var(--color-danger); margin-top: 4px;">
+                        失败原因: 本地内存不足 (需 1.6GB 运行内存，当前系统可用仅 400MB)
+                      </div>
+                    </div>
+                    <button class="btn btn-secondary btn-sm">🔄 重试装载</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==========================================
+             页面 6：系统通用设置 (含主题三态控制器)
+             ========================================== -->
+        <section id="view-settings" class="page-view">
+          <div class="card-panel" style="max-width: 650px; margin: 0 auto; width: 100%;">
+            <div class="card-header">
+              <div class="card-title">系统通用偏好设置</div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+              <!-- 主题三选一设置卡 -->
+              <div style="background: var(--color-bg-subtle); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--color-border-subtle);">
+                <label style="font-size: 0.9rem; font-weight: 600; display: block; margin-bottom: 8px;">外观主题模式 (Theme Mode)</label>
+                <div style="display: flex; gap: 24px; font-size: 0.88rem;">
+                  <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                    <input type="radio" name="setting-theme" value="dark" checked> 🌙 深色模式 (Dark)
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                    <input type="radio" name="setting-theme" value="light"> ☀️ 浅色模式 (Light)
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                    <input type="radio" name="setting-theme" value="system"> 💻 跟随系统 (System)
+                  </label>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 8px;">
+                  选择浅色模式可在明亮环境下获得高对比度阅读体验，所有算法网格均经过专属对比度适配。
+                </div>
+              </div>
+
+              <div>
+                <label style="font-size: 0.88rem; font-weight: 600;">Web Audio 算法音效</label>
+                <div style="font-size: 0.75rem; color: var(--color-text-muted);">采用原生振荡器程序化实时合成，零网络延迟与零资源依赖</div>
+              </div>
+
+              <div>
+                <button class="btn btn-secondary btn-sm" onclick="alert('本地缓存已清空，所有预设已重置')">🗑 清理本地全部缓存数据</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==========================================
+             页面 7：用户登录与注册
+             ========================================== -->
+        <section id="view-login" class="page-view">
+          <div class="card-panel login-container">
+            <div style="text-align: center; margin-bottom: 24px;">
+              <h2 style="font-size: 1.4rem; font-weight: bold; color: var(--color-text-primary);">账户登录与注册</h2>
+              <p style="font-size: 0.82rem; color: var(--color-text-muted); margin-top: 4px;">登录以保存自定义矩阵案例、多轮 AI 对话与学习进度</p>
+            </div>
+
+            <div style="display: flex; border-bottom: 1px solid var(--color-border-subtle); margin-bottom: 20px;">
+              <button style="flex: 1; padding: 10px; background: none; border: none; border-bottom: 2px solid var(--color-accent-primary); color: var(--color-accent-primary); font-weight: bold; cursor: pointer;">账号登录</button>
+              <button style="flex: 1; padding: 10px; background: none; border: none; color: var(--color-text-muted); cursor: pointer;">新用户注册</button>
+            </div>
+
+            <form style="display: flex; flex-direction: column; gap: 16px;" onsubmit="event.preventDefault();">
+              <div>
+                <label style="font-size: 0.8rem; color: var(--color-text-secondary); display: block; margin-bottom: 6px;">用户名 / 学号</label>
+                <input type="text" class="input-field" style="width: 100%;" value="student_os">
+              </div>
+
+              <div>
+                <label style="font-size: 0.8rem; color: var(--color-text-secondary); display: block; margin-bottom: 6px;">登录密码</label>
+                <input type="password" class="input-field" style="width: 100%;" value="password123">
+              </div>
+
+              <button class="btn btn-primary" style="width: 100%; margin-top: 8px;">立即登录</button>
+            </form>
+
+            <div style="text-align: center; margin: 20px 0 16px; font-size: 0.78rem; color: var(--color-text-muted); position: relative;">
+              <span>或者快速体验？</span>
+            </div>
+
+            <button class="btn btn-secondary" style="width: 100%;" id="btn-guest-mode">⚡ 以游客身份快速进入 (无需账号)</button>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+    <!-- 底部播放控制条 -->
+    <footer class="playback-dock" id="global-playback-dock">
+      <div class="dock-controls">
+        <button class="dock-btn" id="dock-btn-first" title="跳至起始步骤">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></svg>
+        </button>
+        <button class="dock-btn" id="dock-btn-prev" title="单步后退">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="15 18 9 12 15 6 15 18"></polygon></svg>
+        </button>
+        <button class="dock-btn dock-btn-main" id="dock-btn-play" title="自动播放 / 暂停">
+          <svg id="play-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        </button>
+        <button class="dock-btn" id="dock-btn-next" title="单步前进">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="9 18 15 12 9 6 9 18"></polygon></svg>
+        </button>
+        <button class="dock-btn" id="dock-btn-last" title="跳至最终步骤">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+        </button>
+      </div>
+
+      <div class="timeline-scrubber">
+        <span class="step-counter" id="dock-step-text">步骤 6 / 13</span>
+        <input type="range" class="timeline-slider" id="dock-timeline-slider" min="0" max="12" value="5">
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 0.78rem; color: var(--color-text-muted);">播放速度：</span>
+        <select class="input-field" id="dock-speed-select" style="padding: 4px 8px; font-size: 0.78rem;">
+          <option value="2000">0.5x</option>
+          <option value="1000" selected>1.0x</option>
+          <option value="500">2.0x</option>
+          <option value="250">4.0x</option>
+          <option value="125">8.0x</option>
+        </select>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    // Web Audio 原生合成器
+    class SoundSynthesizer {
+      constructor() {
+        this.ctx = null;
+        this.volume = 0.7;
+        this.isMuted = false;
+      }
+      initContext() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) this.ctx = new AudioContext();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+      }
+      playTone(type) {
+        if (this.isMuted) return;
+        this.initContext();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        const currentVol = this.volume;
+
+        if (type === 'HIT') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(587.33, now);
+          osc.frequency.exponentialRampToValueAtTime(880, now + 0.1);
+          gain.gain.setValueAtTime(currentVol * 0.4, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+          osc.start(now);
+          osc.stop(now + 0.15);
+        } else if (type === 'MISS') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(220, now);
+          osc.frequency.exponentialRampToValueAtTime(110, now + 0.18);
+          gain.gain.setValueAtTime(currentVol * 0.5, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+          osc.start(now);
+          osc.stop(now + 0.2);
+        } else if (type === 'CLICK') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(800, now);
+          gain.gain.setValueAtTime(currentVol * 0.1, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+          osc.start(now);
+          osc.stop(now + 0.03);
+        }
+      }
+    }
+    const synth = new SoundSynthesizer();
+
+    // 主题切换管理器
+    let currentTheme = localStorage.getItem('os_theme') || 'dark';
+
+    function applyTheme(theme) {
+      currentTheme = theme;
+      localStorage.setItem('os_theme', theme);
+      const isLight = (theme === 'light');
+      if (isLight) {
+        document.body.classList.add('light-theme');
+        document.getElementById('theme-btn-icon').textContent = '🌙';
+        document.getElementById('theme-btn-text').textContent = '深色模式';
+      } else {
+        document.body.classList.remove('light-theme');
+        document.getElementById('theme-btn-icon').textContent = '☀️';
+        document.getElementById('theme-btn-text').textContent = '浅色模式';
+      }
+
+      // 同步设置页单选钮
+      const radio = document.querySelector(`input[name="setting-theme"][value="${theme}"]`);
+      if (radio) radio.checked = true;
+
+      synth.playTone('CLICK');
+    }
+
+    // 页面置换仿真预置数据
+    const sampleTrace = [
+      { page: 7, frames: [7, null, null], hit: false, desc: "访问页面 7: 内存空闲，分配页框 0" },
+      { page: 0, frames: [7, 0, null], hit: false, desc: "访问页面 0: 内存空闲，分配页框 1" },
+      { page: 1, frames: [7, 0, 1], hit: false, desc: "访问页面 1: 内存空闲，分配页框 2" },
+      { page: 2, frames: [2, 0, 1], hit: false, desc: "访问页面 2: 内存满，LRU 淘汰页面 7" },
+      { page: 0, frames: [2, 0, 1], hit: true,  desc: "访问页面 0: 命中页框 1" },
+      { page: 3, frames: [2, 3, 1], hit: false, desc: "访问页面 3: 内存满，LRU 淘汰页面 0" },
+      { page: 0, frames: [2, 3, 0], hit: false, desc: "访问页面 0: 内存满，LRU 淘汰页面 1" },
+      { page: 4, frames: [4, 3, 0], hit: false, desc: "访问页面 4: 内存满，LRU 淘汰页面 2" },
+      { page: 2, frames: [4, 2, 0], hit: false, desc: "访问页面 2: 内存满，LRU 淘汰页面 3" },
+      { page: 3, frames: [4, 2, 3], hit: false, desc: "访问页面 3: 内存满，LRU 淘汰页面 0" },
+      { page: 0, frames: [0, 2, 3], hit: false, desc: "访问页面 0: 内存满，LRU 淘汰页面 4" },
+      { page: 3, frames: [0, 2, 3], hit: true,  desc: "访问页面 3: 命中页框 2" },
+      { page: 2, frames: [0, 2, 3], hit: true,  desc: "访问页面 2: 命中页框 1" }
+    ];
+
+    let currentStepIdx = 5;
+    let isPlaying = false;
+    let playTimer = null;
+
+    function renderStep(idx) {
+      if (idx < 0 || idx >= sampleTrace.length) return;
+      currentStepIdx = idx;
+      const step = sampleTrace[idx];
+
+      document.getElementById('dock-step-text').textContent = `步骤 ${idx + 1} / ${sampleTrace.length}`;
+      document.getElementById('dock-timeline-slider').value = idx;
+      document.getElementById('rep-current-step-badge').textContent = `当前步：第 ${idx + 1} 步 / 访问页面 ${step.page}`;
+
+      const statusBadge = document.getElementById('rep-status-badge');
+      if (step.hit) {
+        statusBadge.className = 'badge badge-success';
+        statusBadge.textContent = '✅ 页面命中 (Hit)';
+      } else {
+        statusBadge.className = 'badge badge-danger';
+        statusBadge.textContent = '❌ 发生缺页 (Page Fault)';
+      }
+
+      const streamContainer = document.getElementById('rep-stream-container');
+      streamContainer.innerHTML = '';
+      sampleTrace.forEach((item, i) => {
+        const div = document.createElement('div');
+        div.className = 'ref-item' + (i === idx ? ' current' : (i < idx ? ' processed' : ''));
+        div.innerHTML = `<span class="ref-item-step">#${i+1}</span>${item.page}`;
+        streamContainer.appendChild(div);
+      });
+
+      const framesContainer = document.getElementById('rep-frames-container');
+      framesContainer.innerHTML = '';
+      step.frames.forEach((val, fIdx) => {
+        const frameCard = document.createElement('div');
+        let cardClass = 'frame-slot-card';
+        if (step.hit && val === step.page) cardClass += ' hit';
+        if (!step.hit && val === step.page) cardClass += ' miss';
+        frameCard.className = cardClass;
+        frameCard.innerHTML = `
+          <div class="frame-slot-label">物理页框 ${fIdx}</div>
+          <div class="frame-slot-number">${val !== null ? val : '-'}</div>
+          <div style="font-size:0.7rem; color:var(--color-text-muted)">${val !== null ? '已装载' : '空闲'}</div>
+        `;
+        framesContainer.appendChild(frameCard);
+      });
+
+      let hits = 0, misses = 0;
+      for (let i = 0; i <= idx; i++) {
+        if (sampleTrace[i].hit) hits++; else misses++;
+      }
+      const total = idx + 1;
+      const rate = ((misses / total) * 100).toFixed(1) + '%';
+      document.getElementById('metric-total').textContent = total;
+      document.getElementById('metric-faults').textContent = misses;
+      document.getElementById('metric-hits').textContent = hits;
+      document.getElementById('metric-rate').textContent = rate;
+
+      const logContainer = document.getElementById('rep-terminal-log');
+      const logEntry = document.createElement('div');
+      logEntry.className = 'log-row';
+      const timeStr = new Date().toLocaleTimeString();
+      const tagClass = step.hit ? 'log-hit' : 'log-miss';
+      const tagText = step.hit ? '[HIT]' : '[MISS]';
+      logEntry.innerHTML = `<span class="log-time">[${timeStr}]</span> <span class="${tagClass}">${tagText}</span> <span>${step.desc}</span>`;
+      logContainer.appendChild(logEntry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+
+      synth.playTone(step.hit ? 'HIT' : 'MISS');
+    }
+
+    function playNext() {
+      if (currentStepIdx < sampleTrace.length - 1) renderStep(currentStepIdx + 1);
+      else pausePlayback();
+    }
+    function playPrev() {
+      if (currentStepIdx > 0) renderStep(currentStepIdx - 1);
+    }
+    function startPlayback() {
+      isPlaying = true;
+      document.getElementById('dock-btn-play').innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
+      const interval = parseInt(document.getElementById('dock-speed-select').value) || 1000;
+      playTimer = setInterval(() => {
+        if (currentStepIdx < sampleTrace.length - 1) playNext(); else pausePlayback();
+      }, interval);
+    }
+    function pausePlayback() {
+      isPlaying = false;
+      document.getElementById('dock-btn-play').innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>';
+      if (playTimer) { clearInterval(playTimer); playTimer = null; }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // 初始化主题
+      applyTheme(currentTheme);
+
+      // 初次渲染
+      renderStep(5);
+
+      // 顶部主题快捷切换按钮事件
+      document.getElementById('btn-toggle-theme').addEventListener('click', () => {
+        const nextTheme = (currentTheme === 'light') ? 'dark' : 'light';
+        applyTheme(nextTheme);
+      });
+
+      // 设置页单选按钮事件
+      document.querySelectorAll('input[name="setting-theme"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+          applyTheme(e.target.value);
+        });
+      });
+
+      const navItems = document.querySelectorAll('.nav-item');
+      const pageViews = document.querySelectorAll('.page-view');
+      const titleMap = {
+        'view-page-rep': '页面置换算法 (Page Replacement)',
+        'view-banker': '银行家算法与死锁检测 (Banker\'s Algorithm)',
+        'view-threads': '多线程并发与同步互斥 (Threads & Mutex)',
+        'view-ai-chat': 'AI 助教对话 (Doubao / DeepSeek / Ollama)',
+        'view-engine-settings': '模型引擎设置 (12 厂商模板 / 中转 / 本地部署)',
+        'view-settings': '系统通用偏好设置',
+        'view-login': '用户登录 / 注册'
+      };
+
+      navItems.forEach(item => {
+        item.addEventListener('click', () => {
+          navItems.forEach(n => n.classList.remove('active'));
+          item.classList.add('active');
+
+          const targetId = item.getAttribute('data-target');
+          pageViews.forEach(v => v.classList.remove('active'));
+          const targetView = document.getElementById(targetId);
+          if (targetView) targetView.classList.add('active');
+
+          document.getElementById('header-page-title').textContent = titleMap[targetId] || '操作详情';
+
+          const dock = document.getElementById('global-playback-dock');
+          if (targetId === 'view-login' || targetId === 'view-settings' || targetId === 'view-engine-settings') {
+            dock.style.display = 'none';
+          } else {
+            dock.style.display = 'flex';
+          }
+        });
+      });
+
+      // 播放控制条事件
+      document.getElementById('dock-btn-play').addEventListener('click', () => { if (isPlaying) pausePlayback(); else startPlayback(); });
+      document.getElementById('dock-btn-next').addEventListener('click', () => { pausePlayback(); playNext(); });
+      document.getElementById('dock-btn-prev').addEventListener('click', () => { pausePlayback(); playPrev(); });
+      document.getElementById('dock-btn-first').addEventListener('click', () => { pausePlayback(); renderStep(0); });
+      document.getElementById('dock-btn-last').addEventListener('click', () => { pausePlayback(); renderStep(sampleTrace.length - 1); });
+      document.getElementById('dock-timeline-slider').addEventListener('input', (e) => { pausePlayback(); renderStep(parseInt(e.target.value)); });
+      document.getElementById('dock-speed-select').addEventListener('change', () => { if (isPlaying) { pausePlayback(); startPlayback(); } });
+
+      // 音量控制
+      document.getElementById('volume-range').addEventListener('input', (e) => {
+        synth.volume = parseFloat(e.target.value);
+        synth.isMuted = (synth.volume === 0);
+      });
+      document.getElementById('btn-toggle-sound').addEventListener('click', () => {
+        synth.isMuted = !synth.isMuted;
+        alert(synth.isMuted ? "已静音" : "已开启音效");
+      });
+      document.getElementById('btn-test-sound').addEventListener('click', () => synth.playTone('HIT'));
+
+      // 模型引擎 Tab 切换
+      const engineTabs = document.querySelectorAll('.engine-tab-btn');
+      const subTabs = document.querySelectorAll('.engine-sub-tab');
+      engineTabs.forEach(btn => {
+        btn.addEventListener('click', () => {
+          engineTabs.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const tabTarget = btn.getAttribute('data-tab');
+          subTabs.forEach(st => st.style.display = 'none');
+          const activeSub = document.getElementById(tabTarget);
+          if (activeSub) activeSub.style.display = 'block';
+        });
+      });
+
+      // 厂商卡片选择联动
+      const pCards = document.querySelectorAll('.provider-card');
+      pCards.forEach(card => {
+        card.addEventListener('click', () => {
+          pCards.forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+          const pname = card.getAttribute('data-pname');
+          const pbase = card.getAttribute('data-base');
+          const pmodel = card.getAttribute('data-model');
+          document.getElementById('current-pname').textContent = '当前配置：' + pname;
+          document.getElementById('current-pbase').value = pbase;
+          document.getElementById('current-pmodel').value = pmodel;
+        });
+      });
+
+      // 测试连接模拟
+      document.getElementById('btn-ping-test').addEventListener('click', () => {
+        const box = document.getElementById('ping-result-box');
+        box.style.display = 'block';
+        box.style.background = 'var(--color-success-bg)';
+        box.style.color = 'var(--color-success)';
+        box.style.border = '1px solid var(--color-success)';
+        box.innerHTML = '<strong>✅ 探测成功 (HTTP 200 OK)</strong><br>响应往返延迟：138ms | 服务就绪状态：正常响应';
+      });
+
+      document.getElementById('btn-detect-ollama').addEventListener('click', () => {
+        alert('探测成功：已连接到本地 http://localhost:11434，发现已安装模型：qwen2.5:1.5b 与 deepseek-r1:1.5b');
+      });
+
+      document.getElementById('btn-jump-engine-settings').addEventListener('click', () => {
+        document.querySelector('.nav-item[data-target="view-engine-settings"]').click();
+      });
+
+      document.getElementById('top-btn-login').addEventListener('click', () => {
+        document.querySelector('.nav-item[data-target="view-login"]').click();
+      });
+      document.getElementById('btn-guest-mode').addEventListener('click', () => {
+        document.querySelector('.nav-item[data-target="view-page-rep"]').click();
+      });
+    });
+  </script>
+</body>
+</html>

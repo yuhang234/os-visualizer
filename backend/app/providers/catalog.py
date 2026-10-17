@@ -1,0 +1,197 @@
+"""12 大模型厂商模板清单。
+
+字段与设计文档第 9.1 节「主流模型厂商模板清单核实表」逐行对应：
+  baseUrl / defaultModel / authHeader / openAiCompatible / sseTextPath
+第 12 项为通用中转 / 自定义 OpenAI 兼容接入，由用户自由填写。
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+# sse_text_path 采用点号路径描述从 SSE data JSON 中取增量文本的位置
+OPENAI_SSE_PATH = "choices.0.delta.content"
+
+PROVIDER_TEMPLATES: list[dict[str, Any]] = [
+    {
+        "key": "openai",
+        "name": "OpenAI",
+        "baseUrl": "https://api.openai.com/v1",
+        "defaultModel": "gpt-4o",
+        "models": ["gpt-4o", "gpt-4o-mini"],
+        "authHeader": "Authorization",
+        "authScheme": "Bearer",
+        "extraHeaders": {},
+        "openAiCompatible": True,
+        "sseTextPath": OPENAI_SSE_PATH,
+        "category": "cloud",
+        "docsUrl": "https://platform.openai.com/docs/api-reference",
+    },
+    {
+        "key": "anthropic",
+        "name": "Anthropic Claude",
+        "baseUrl": "https://api.anthropic.com/v1",
+        "defaultModel": "claude-3-5-sonnet-20241022",
+        "models": ["claude-3-5-sonnet-20241022"],
+        "authHeader": "x-api-key",
+        "authScheme": "",
+        "extraHeaders": {"anthropic-version": "2023-06-01"},
+        "openAiCompatible": False,
+        "sseTextPath": "delta.text",
+        "nativeProtocol": "anthropic-messages",
+        "category": "cloud",
+        "docsUrl": "https://docs.anthropic.com/en/api/messages",
+    },
+    {
+        "key": "gemini",
+        "name": "Google Gemini",
+        "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai/",
+        "defaultModel": "gemini-2.0-flash",
+        "models": ["gemini-1.5-flash", "gemini-2.0-flash"],
+        "authHeader": "Authorization",
+        "authScheme": "Bearer",
+        "extraHeaders": {},
+        "openAiCompatible": True,
+        "sseTextPath": OPENAI_SSE_PATH,
+        "category": "cloud",
+        "docsUrl": "https://ai.google.dev/gemini-api/docs/openai",
+    },
+    {
+        "key": "deepseek",
+        "name": "DeepSeek",
+        "baseUrl": "https://api.deepseek.com/v1",
+        "defaultModel": "deepseek-chat",
+        "models": ["deepseek-chat", "deepseek-reasoner"],
+        "authHeader": "Authorization",
+        "authScheme": "Bearer",
+        "extraHeaders": {},
+        "openAiCompatible": True,
+        "sseTextPath": OPENAI_SSE_PATH,
+        "category": "cloud",
+        "docsUrl": "https://api-docs.deepseek.com/",
+    },
+    {
+        "key": "dashscope",
+        "name": "阿里云百炼 (DashScope)",
+        "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "defaultModel": "qwen-plus",
+        "models": ["qwen-plus", "qwen-turbo"],
+        "authHeader": "Authorization",
+        "authScheme": "Bearer",
+        "extraHeaders": {},
+        "openAiCompatible": True,
+        "sseTextPath": OPENAI_SSE_PATH,
+        "category": "cloud",
+        "docsUrl": "https://help.aliyun.com/zh/model-studio/",
+    },
+    {
+        "key": "doubao",
+        "name": "火山方舟 (豆包 Doubao)",
+        "baseUrl": "https://ark.cn-beijing.volces.com/api/v3",
+        "defaultModel": "",
+        "models": [],
+        "modelHint": "填写控制台推理接入点 ID（形如 ep-xxxxxxxx）",
+        "authHeader": "Authorization",
+        "authScheme": "Bearer",
+        "extraHeaders": {},
+        "openAiCompatible": True,
+        "sseTextPath": OPENAI_SSE_PATH,
+        "category": "cloud",
+        "docsUrl": "https://www.volcengine.com/docs/82379",
+    },
+    {
+        "key": "siliconflow",
+        "name": "硅基流动 (SiliconFlow)",
+        "baseUrl": "https://api.siliconflow.cn/v1",
+        "defaultModel": "deepseek-ai/DeepSeek-V3",
+        "models": ["deepseek-ai/DeepSeek-V3"],
+        "authHeader": "Authorization",
+        "authScheme": "Bearer",
+        "extraHeaders": {},
+        "openAiCompatible": True,
+        "sseTextPath": OPENAI_SSE_PATH,
+        "category": "cloud",
+        "docsUrl": "https://docs.siliconflow.cn/",
+    },
+    {
+        "key": "groq",
+        "name": "Groq",
+        "baseUrl": "https://api.groq.com/openai/v1",
+        "defaultModel": "llama-3.3-70b-versatile",
+        "models": ["llama-3.3-70b-versatile"],
+        "authHeader": "Authorization",
+        "authScheme": "Bearer",
+        "extraHeaders": {},
+        "openAiCompatible": True,
+        "sseTextPath": OPENAI_SSE_PATH,
+        "category": "cloud",
+        "docsUrl": "https://console.groq.com/docs/openai",
+    },
+    {
+        "key": "openrouter",
+        "name": "OpenRouter",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "defaultModel": "meta-llama/llama-3.3-70b-instruct",
+        "models": ["meta-llama/llama-3.3-70b-instruct"],
+        "authHeader": "Authorization",
+        "authScheme": "Bearer",
+        "extraHeaders": {},
+        "openAiCompatible": True,
+        "sseTextPath": OPENAI_SSE_PATH,
+        "category": "cloud",
+        "docsUrl": "https://openrouter.ai/docs",
+    },
+    {
+        "key": "moonshot",
+        "name": "Moonshot Kimi",
+        "baseUrl": "https://api.moonshot.cn/v1",
+        "defaultModel": "moonshot-v1-8k",
+        "models": ["moonshot-v1-8k"],
+        "authHeader": "Authorization",
+        "authScheme": "Bearer",
+        "extraHeaders": {},
+        "openAiCompatible": True,
+        "sseTextPath": OPENAI_SSE_PATH,
+        "category": "cloud",
+        "docsUrl": "https://platform.moonshot.cn/docs",
+    },
+    {
+        "key": "zhipu",
+        "name": "智谱 GLM",
+        "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
+        "defaultModel": "glm-4-flash",
+        "models": ["glm-4-flash"],
+        "authHeader": "Authorization",
+        "authScheme": "Bearer",
+        "extraHeaders": {},
+        "openAiCompatible": True,
+        "sseTextPath": OPENAI_SSE_PATH,
+        "category": "cloud",
+        "docsUrl": "https://open.bigmodel.cn/dev/api",
+    },
+    {
+        "key": "custom",
+        "name": "自定义 / 中转 API (通用)",
+        "baseUrl": "",
+        "defaultModel": "",
+        "models": [],
+        "modelHint": "填写中转网关（OneAPI / NewAPI / 逆向网关等）暴露的模型名",
+        "authHeader": "Authorization",
+        "authScheme": "Bearer",
+        "extraHeaders": {},
+        "openAiCompatible": True,
+        "sseTextPath": OPENAI_SSE_PATH,
+        "category": "relay",
+        "docsUrl": "",
+    },
+]
+
+PROVIDER_BY_KEY: dict[str, dict[str, Any]] = {item["key"]: item for item in PROVIDER_TEMPLATES}
+
+
+def get_provider_template(key: str) -> dict[str, Any] | None:
+    return PROVIDER_BY_KEY.get(key)
+
+
+def list_provider_templates() -> list[dict[str, Any]]:
+    return [dict(item) for item in PROVIDER_TEMPLATES]

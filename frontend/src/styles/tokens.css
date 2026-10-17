@@ -1,0 +1,227 @@
+/* ============================================================================
+   设计令牌体系 (Design Tokens) —— 设计文档 §3.1 / §3.2
+   深色为默认值；浅色通过 <html class="light-theme"> 覆盖，命名严格一一对应。
+   几何尺寸（侧边栏 250px / 圆角 / 字号阶梯）为绝对不变项（§3.3）。
+   ========================================================================== */
+
+:root {
+  /* ---- 颜色令牌：深色默认 ---- */
+  --color-bg-canvas: #0b0f19;
+  --color-bg-surface: #111827;
+  --color-bg-panel: #1e293b;
+  --color-bg-subtle: #243047;
+  --color-bg-active: #334155;
+
+  --color-border-subtle: #1f293d;
+  --color-border-default: #374151;
+  --color-border-strong: #4b5563;
+
+  --color-text-primary: #f9fafb;
+  --color-text-secondary: #9ca3af;
+  --color-text-muted: #6b7280;
+
+  --color-accent-primary: #38bdf8;
+  --color-accent-hover: #0ea5e9;
+  --color-accent-subtle: rgba(56, 189, 248, 0.12);
+
+  --color-success: #10b981;
+  --color-success-bg: rgba(16, 185, 129, 0.15);
+  --color-warning: #f59e0b;
+  --color-warning-bg: rgba(245, 158, 11, 0.15);
+  --color-danger: #ef4444;
+  --color-danger-bg: rgba(239, 68, 68, 0.15);
+  --color-info: #6366f1;
+  --color-info-bg: rgba(99, 102, 241, 0.15);
+
+  /* 可视化元素专用（§5.4 / §6.3 / §7.3） */
+  --viz-current-border: var(--color-accent-primary);
+  --viz-current-bg: var(--color-accent-subtle);
+  --viz-visited-bg: transparent;
+  --viz-visited-border: var(--color-border-default);
+  --viz-hit-border: var(--color-success);
+  --viz-hit-bg: var(--color-success-bg);
+  --viz-miss-border: var(--color-danger);
+  --viz-miss-bg: var(--color-danger-bg);
+  --viz-slot-empty-bg: var(--color-bg-subtle);
+  --viz-slot-empty-border: var(--color-border-strong);
+  --viz-buffer-filled-border: var(--color-accent-primary);
+  --viz-buffer-filled-bg: var(--color-accent-subtle);
+  --viz-buffer-filled-text: var(--color-text-primary);
+  --viz-table-head-bg: #111827;
+  --viz-table-head-text: var(--color-text-secondary);
+  --viz-row-active-bg: var(--color-accent-subtle);
+  --viz-row-active-text: var(--color-accent-primary);
+  --viz-row-finish-bg: var(--color-success-bg);
+  --viz-row-finish-text: var(--color-success);
+  --viz-progress-track: #111827;
+  --viz-progress-from: #0ea5e9;
+  --viz-progress-to: #10b981;
+
+  /* ---- 字体族（§3.2） ---- */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", "Fira Code", Consolas, "Courier New", monospace;
+
+  /* ---- 字号与行高阶梯（§3.3 不变项） ---- */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+
+  /* ---- 圆角（§3.3 不变项） ---- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  /* ---- 阴影与专用底色 ---- */
+  --shadow-panel: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 15px rgba(56, 189, 248, 0.25);
+  --terminal-bg: #050811;
+  --dock-bg: rgba(17, 24, 39, 0.95);
+
+  color-scheme: dark;
+}
+
+/* ---- 浅色主题令牌覆盖（一一对应） ---- */
+html.light-theme {
+  --color-bg-canvas: #f8fafc;
+  --color-bg-surface: #ffffff;
+  --color-bg-panel: #ffffff;
+  --color-bg-subtle: #f1f5f9;
+  --color-bg-active: #e2e8f0;
+
+  --color-border-subtle: #f1f5f9;
+  --color-border-default: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748b;
+
+  --color-accent-primary: #0284c7;
+  --color-accent-hover: #0369a1;
+  --color-accent-subtle: rgba(2, 132, 199, 0.08);
+
+  --color-success: #059669;
+  --color-success-bg: rgba(5, 150, 105, 0.10);
+  --color-warning: #d97706;
+  --color-warning-bg: rgba(217, 119, 6, 0.10);
+  --color-danger: #dc2626;
+  --color-danger-bg: rgba(220, 38, 38, 0.10);
+  --color-info: #4f46e5;
+  --color-info-bg: rgba(79, 70, 229, 0.10);
+
+  /* 浅色下可视化元素必须显式换色，避免沿用深色发光配色（§5.4 / §6.3 / §7.3） */
+  --viz-visited-bg: #f1f5f9;
+  --viz-visited-border: #cbd5e1;
+  --viz-hit-bg: #ecfdf5;
+  --viz-miss-bg: #fef2f2;
+  --viz-slot-empty-bg: #ffffff;
+  --viz-slot-empty-border: #94a3b8;
+  --viz-buffer-filled-bg: #e0f2fe;
+  --viz-buffer-filled-text: #0369a1;
+  --viz-table-head-bg: #f1f5f9;
+  --viz-row-active-bg: #e0f2fe;
+  --viz-row-active-text: #0369a1;
+  --viz-row-finish-bg: #ecfdf5;
+  --viz-row-finish-text: #065f46;
+  --viz-progress-track: #e2e8f0;
+  --viz-progress-from: #0284c7;
+  --viz-progress-to: #059669;
+
+  --shadow-panel: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  --shadow-glow: 0 0 12px rgba(2, 132, 199, 0.2);
+  --terminal-bg: #f8fafc;
+  --dock-bg: rgba(255, 255, 255, 0.95);
+
+  color-scheme: light;
+}
+
+/* ---- 全局基线 ---- */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  background-color: var(--color-bg-canvas);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 主题切换时的平滑过渡（不参与布局尺寸，无回流） */
+body,
+.card,
+.sidebar,
+.top-header,
+.playback-dock,
+.btn,
+.input-field,
+.badge,
+.frame-slot,
+.buffer-slot,
+.thread-card,
+.matrix-table td,
+.matrix-table th {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-default);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-strong);
+}
+
+code,
+pre,
+kbd,
+.mono {
+  font-family: var(--font-mono);
+}
+
+button {
+  font-family: inherit;
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+a {
+  color: var(--color-accent-primary);
+  text-decoration: none;
+}
+
+/* KaTeX 在深色下的可读性微调 */
+.katex {
+  color: var(--color-text-primary);
+}

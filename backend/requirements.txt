@@ -1,0 +1,9 @@
+# os-visualizer 后端运行时依赖
+# 版本锁定以保证可复现构建（Python 3.11+，开发验证环境为 3.13）
+fastapi==0.143.3
+uvicorn[standard]==0.54.0
+pydantic==2.14.1
+PyJWT==2.15.1
+cryptography==50.0.2
+httpx==0.28.1
+python-multipart==0.0.32

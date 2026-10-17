@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="os-visualizer 操作系统核心原理可视化教学平台：页面置换、银行家算法、多线程同步与多模型 AI 助教" />
+    <title>OS Visualizer · 操作系统核心原理可视化教学平台</title>
+    <script>
+      /* 零白屏闪烁 (FOUC Prevention)：设计文档 §3.4，必须在样式解析前执行 */
+      (function () {
+        var saved = localStorage.getItem('os_theme') || 'dark';
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var theme = saved === 'system' ? (prefersDark ? 'dark' : 'light') : saved;
+        if (theme === 'light') {
+          document.documentElement.classList.add('light-theme');
+        } else {
+          document.documentElement.classList.remove('light-theme');
+        }
+      })();
+    </script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

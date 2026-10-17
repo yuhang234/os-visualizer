@@ -1,0 +1,26 @@
+# ---- Python / 后端 ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+# 运行期数据：SQLite 库、JWT 密钥、加密主密钥、内置模型缓存
+backend/data/
+backend/models_cache/
+backend/.env
+
+# ---- Node / 前端 ----
+node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+
+# ---- 编辑器 / 系统 ----
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# ---- TS 增量编译缓存 ----
+*.tsbuildinfo
