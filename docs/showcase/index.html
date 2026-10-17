@@ -1,0 +1,3639 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>os-visualizer 操作系统核心原理可视化教学平台 —— 纯前端静态展厅 (Showcase)</title>
+  <style>
+
+    /* ==========================================================================
+       双主题设计令牌体系 (Dual Theme Tokens per docs/design-spec.md Section 3)
+       ========================================================================== */
+    :root {
+      /* 深色模式默认令牌 */
+      --color-bg-canvas: #0b0f19;
+      --color-bg-surface: #111827;
+      --color-bg-panel: #1e293b;
+      --color-bg-subtle: #243047;
+      --color-bg-active: #334155;
+
+      --color-border-subtle: #1f293d;
+      --color-border-default: #374151;
+      --color-border-strong: #4b5563;
+
+      --color-text-primary: #f9fafb;
+      --color-text-secondary: #9ca3af;
+      --color-text-muted: #6b7280;
+
+      --color-accent-primary: #38bdf8;
+      --color-accent-hover: #0ea5e9;
+      --color-accent-subtle: rgba(56, 189, 248, 0.12);
+
+      --color-success: #10b981;
+      --color-success-bg: rgba(16, 185, 129, 0.15);
+      --color-warning: #f59e0b;
+      --color-warning-bg: rgba(245, 158, 11, 0.15);
+      --color-danger: #ef4444;
+      --color-danger-bg: rgba(239, 68, 68, 0.15);
+      --color-info: #6366f1;
+      --color-info-bg: rgba(99, 102, 241, 0.15);
+
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+      --font-mono: "JetBrains Mono", "Cascadia Code", "Fira Code", Consolas, "Courier New", monospace;
+
+      --font-size-xs: 0.75rem;
+      --font-size-sm: 0.875rem;
+      --font-size-base: 1rem;
+      --font-size-lg: 1.125rem;
+      --font-size-xl: 1.25rem;
+      --font-size-2xl: 1.5rem;
+      --font-size-3xl: 1.875rem;
+
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-full: 9999px;
+
+      --shadow-panel: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+      --shadow-glow: 0 0 15px rgba(56, 189, 248, 0.25);
+      --terminal-bg: #050811;
+      --dock-bg: rgba(17, 24, 39, 0.95);
+    }
+
+    body.light-theme {
+      --color-bg-canvas: #f8fafc;
+      --color-bg-surface: #ffffff;
+      --color-bg-panel: #ffffff;
+      --color-bg-subtle: #f1f5f9;
+      --color-bg-active: #e2e8f0;
+
+      --color-border-subtle: #f1f5f9;
+      --color-border-default: #e2e8f0;
+      --color-border-strong: #cbd5e1;
+
+      --color-text-primary: #0f172a;
+      --color-text-secondary: #475569;
+      --color-text-muted: #64748b;
+
+      --color-accent-primary: #0284c7;
+      --color-accent-hover: #0369a1;
+      --color-accent-subtle: rgba(2, 132, 199, 0.08);
+
+      --color-success: #059669;
+      --color-success-bg: rgba(5, 150, 105, 0.10);
+      --color-warning: #d97706;
+      --color-warning-bg: rgba(217, 119, 6, 0.10);
+      --color-danger: #dc2626;
+      --color-danger-bg: rgba(220, 38, 38, 0.10);
+      --color-info: #4f46e5;
+      --color-info-bg: rgba(79, 70, 229, 0.10);
+
+      --shadow-panel: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+      --shadow-glow: 0 0 12px rgba(2, 132, 199, 0.2);
+      --terminal-bg: #f8fafc;
+      --dock-bg: rgba(255, 255, 255, 0.95);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      transition: background-color 0.18s ease, border-color 0.18s ease, color 0.15s ease;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--color-bg-canvas);
+      color: var(--color-text-primary);
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--color-bg-canvas); }
+    ::-webkit-scrollbar-thumb { background: var(--color-border-default); border-radius: var(--radius-full); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--color-border-strong); }
+
+    a { color: var(--color-accent-primary); text-decoration: none; }
+    a:hover { text-decoration: underline; color: var(--color-accent-hover); }
+
+    /* 顶栏 Header */
+    .showcase-header {
+      background-color: var(--color-bg-surface);
+      border-bottom: 1px solid var(--color-border-default);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(8px);
+    }
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1.5rem;
+      border-bottom: 1px solid var(--color-border-subtle);
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .brand-logo {
+      width: 34px;
+      height: 34px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, var(--color-accent-primary), var(--color-info));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(56, 189, 248, 0.35);
+      flex-shrink: 0;
+    }
+    .brand-text {
+      display: flex;
+      flex-direction: column;
+    }
+    .brand-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--color-text-primary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .brand-version {
+      font-size: 0.7rem;
+      padding: 1px 6px;
+      background: var(--color-accent-subtle);
+      color: var(--color-accent-primary);
+      border: 1px solid var(--color-accent-primary);
+      border-radius: var(--radius-full);
+      font-weight: 600;
+    }
+    .brand-subtitle {
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.4rem 0.8rem;
+      font-size: var(--font-size-sm);
+      font-weight: 500;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      border: 1px solid transparent;
+      outline: none;
+      background: transparent;
+      color: var(--color-text-primary);
+      user-select: none;
+      text-decoration: none !important;
+    }
+    .btn-default {
+      background: var(--color-bg-panel);
+      border-color: var(--color-border-default);
+    }
+    .btn-default:hover {
+      background: var(--color-bg-subtle);
+      border-color: var(--color-border-strong);
+    }
+    .btn-primary {
+      background: var(--color-accent-primary);
+      color: #ffffff;
+      border-color: var(--color-accent-primary);
+    }
+    .btn-primary:hover {
+      background: var(--color-accent-hover);
+      border-color: var(--color-accent-hover);
+    }
+    .btn-success {
+      background: var(--color-success);
+      color: #ffffff;
+    }
+    .btn-danger {
+      background: var(--color-danger);
+      color: #ffffff;
+    }
+    .btn-sm {
+      padding: 0.25rem 0.5rem;
+      font-size: var(--font-size-xs);
+    }
+
+    .user-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: var(--radius-full);
+      background: var(--color-bg-subtle);
+      border: 1px solid var(--color-border-default);
+      font-size: var(--font-size-xs);
+      cursor: pointer;
+    }
+    .user-badge:hover {
+      border-color: var(--color-accent-primary);
+    }
+    .user-avatar {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--color-accent-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: #fff;
+    }
+
+    /* 快捷导航栏 */
+    .header-nav {
+      display: flex;
+      overflow-x: auto;
+      padding: 0.2rem 1.5rem;
+      gap: 0.4rem;
+      scrollbar-width: none;
+    }
+    .header-nav::-webkit-scrollbar { display: none; }
+    .nav-tab {
+      padding: 0.5rem 0.85rem;
+      font-size: var(--font-size-sm);
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .nav-tab:hover {
+      color: var(--color-text-primary);
+      background: var(--color-accent-subtle);
+      border-radius: var(--radius-sm);
+    }
+    .nav-tab.active {
+      color: var(--color-accent-primary);
+      border-bottom-color: var(--color-accent-primary);
+      font-weight: 600;
+    }
+
+    /* 主内容区 */
+    .main-container {
+      flex: 1;
+      max-width: 1440px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* 视图切换 */
+    .view-section {
+      display: none;
+      flex-direction: column;
+      gap: 1.5rem;
+      animation: fadeIn 0.2s ease-in-out;
+    }
+    .view-section.active {
+      display: flex;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 真实产品对比说明卡片 */
+    .showcase-disclaimer {
+      background: var(--color-accent-subtle);
+      border: 1px solid var(--color-accent-primary);
+      border-radius: var(--radius-md);
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      font-size: var(--font-size-sm);
+      color: var(--color-text-primary);
+      flex-wrap: wrap;
+    }
+    .showcase-disclaimer strong {
+      color: var(--color-accent-primary);
+    }
+
+    /* 通用卡片容器 */
+    .card {
+      background: var(--color-bg-surface);
+      border: 1px solid var(--color-border-default);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      box-shadow: var(--shadow-panel);
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--color-border-subtle);
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .card-title {
+      font-size: var(--font-size-lg);
+      font-weight: 700;
+      color: var(--color-text-primary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .card-subtitle {
+      font-size: var(--font-size-xs);
+      color: var(--color-text-muted);
+    }
+
+    /* 徽标样式 */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.55rem;
+      border-radius: var(--radius-full);
+      font-size: var(--font-size-xs);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-primary { background: var(--color-accent-subtle); color: var(--color-accent-primary); border: 1px solid var(--color-accent-primary); }
+    .badge-success { background: var(--color-success-bg); color: var(--color-success); border: 1px solid var(--color-success); }
+    .badge-warning { background: var(--color-warning-bg); color: var(--color-warning); border: 1px solid var(--color-warning); }
+    .badge-danger  { background: var(--color-danger-bg);  color: var(--color-danger);  border: 1px solid var(--color-danger); }
+    .badge-info    { background: var(--color-info-bg);    color: var(--color-info);    border: 1px solid var(--color-info); }
+
+    /* 功能总览 Hero 与卡片网格 */
+    .hero-banner {
+      background: linear-gradient(135deg, var(--color-bg-panel), var(--color-bg-surface));
+      border: 1px solid var(--color-border-default);
+      border-radius: var(--radius-lg);
+      padding: 2.2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-banner::after {
+      content: "";
+      position: absolute;
+      right: -30px;
+      bottom: -30px;
+      width: 240px;
+      height: 240px;
+      background: radial-gradient(circle, var(--color-accent-subtle) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-title {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--color-text-primary);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .hero-desc {
+      font-size: var(--font-size-base);
+      color: var(--color-text-secondary);
+      max-width: 900px;
+      line-height: 1.6;
+    }
+    .hero-tags {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .overview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.25rem;
+    }
+    .feature-card {
+      background: var(--color-bg-surface);
+      border: 1px solid var(--color-border-default);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 1rem;
+      box-shadow: var(--shadow-panel);
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .feature-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--color-accent-primary);
+      box-shadow: var(--shadow-glow);
+    }
+    .feature-card-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+    .feature-icon-box {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-md);
+      background: var(--color-bg-subtle);
+      border: 1px solid var(--color-border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      flex-shrink: 0;
+      color: var(--color-accent-primary);
+    }
+    .feature-card-body h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--color-text-primary);
+      margin-bottom: 0.35rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .feature-card-body p {
+      font-size: var(--font-size-sm);
+      color: var(--color-text-secondary);
+      line-height: 1.45;
+    }
+    .feature-card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--color-border-subtle);
+      padding-top: 0.75rem;
+      margin-top: auto;
+    }
+
+    /* 表格通用样式 */
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--color-border-default);
+      border-radius: var(--radius-md);
+      background: var(--color-bg-panel);
+    }
+    .os-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: var(--font-size-sm);
+      font-family: var(--font-mono);
+      text-align: center;
+    }
+    .os-table th {
+      background: var(--color-bg-surface);
+      color: var(--color-text-secondary);
+      padding: 0.65rem 0.75rem;
+      font-weight: 600;
+      border-bottom: 1px solid var(--color-border-default);
+      border-right: 1px solid var(--color-border-subtle);
+    }
+    .os-table td {
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid var(--color-border-subtle);
+      border-right: 1px solid var(--color-border-subtle);
+      color: var(--color-text-primary);
+    }
+    .os-table tr:last-child td { border-bottom: none; }
+    .os-table th:last-child, .os-table td:last-child { border-right: none; }
+    .os-table tr.active-check {
+      background: var(--color-accent-subtle) !important;
+      color: var(--color-accent-primary);
+      font-weight: 700;
+    }
+    .os-table tr.finish-true {
+      background: var(--color-success-bg) !important;
+    }
+
+    /* 页面置换专用样式 */
+    .rep-stream-list {
+      display: flex;
+      gap: 0.4rem;
+      overflow-x: auto;
+      padding: 0.6rem 0.2rem;
+      scrollbar-width: thin;
+    }
+    .rep-stream-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 52px;
+      background: var(--color-bg-subtle);
+      border: 1px solid var(--color-border-default);
+      border-radius: var(--radius-md);
+      font-family: var(--font-mono);
+      font-size: 1.1rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .rep-stream-item .step-idx {
+      font-size: 0.65rem;
+      color: var(--color-text-muted);
+      font-weight: 400;
+    }
+    .rep-stream-item.current {
+      border: 2px solid var(--color-accent-primary);
+      background: var(--color-accent-subtle);
+      color: var(--color-accent-primary);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+      transform: scale(1.08);
+    }
+    .rep-stream-item.processed {
+      opacity: 0.55;
+    }
+
+    .frame-slots-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    .frame-slot-card {
+      background: var(--color-bg-panel);
+      border: 2px dashed var(--color-border-default);
+      border-radius: var(--radius-lg);
+      padding: 1rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.2s;
+    }
+    .frame-slot-card.hit {
+      border: 2px solid var(--color-success);
+      background: var(--color-success-bg);
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+    }
+    .frame-slot-card.miss {
+      border: 2px solid var(--color-danger);
+      background: var(--color-danger-bg);
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+    }
+    .frame-slot-val {
+      font-size: 2rem;
+      font-family: var(--font-mono);
+      font-weight: 800;
+      color: var(--color-text-primary);
+    }
+
+    /* 播放控制条 Dock */
+    .playback-dock {
+      background: var(--dock-bg);
+      border: 1px solid var(--color-border-default);
+      border-radius: var(--radius-lg);
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      box-shadow: var(--shadow-panel);
+    }
+    .playback-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .timeline-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      min-width: 200px;
+    }
+    .timeline-slider {
+      flex: 1;
+      accent-color: var(--color-accent-primary);
+      cursor: pointer;
+    }
+
+    /* 缓冲区环形槽位 */
+    .buffer-slots-row {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 1.2rem 0;
+    }
+    .buffer-slot {
+      width: 90px;
+      height: 90px;
+      border-radius: var(--radius-md);
+      border: 2px dashed var(--color-border-default);
+      background: var(--color-bg-panel);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+      font-family: var(--font-mono);
+      position: relative;
+    }
+    .buffer-slot.occupied {
+      border-style: solid;
+      border-color: var(--color-accent-primary);
+      background: var(--color-accent-subtle);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+    }
+    .buffer-slot .slot-idx {
+      font-size: 0.65rem;
+      color: var(--color-text-muted);
+    }
+    .buffer-slot .item-id {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--color-accent-primary);
+    }
+
+    /* AI 助教聊天室 */
+    .chat-box {
+      display: flex;
+      flex-direction: column;
+      height: 520px;
+      background: var(--color-bg-panel);
+      border: 1px solid var(--color-border-default);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .chat-bubble {
+      max-width: 82%;
+      padding: 0.85rem 1.1rem;
+      border-radius: var(--radius-lg);
+      font-size: var(--font-size-sm);
+      line-height: 1.6;
+      word-break: break-word;
+    }
+    .chat-bubble.user {
+      align-self: flex-end;
+      background: var(--color-accent-primary);
+      color: #ffffff;
+      border-bottom-right-radius: 2px;
+    }
+    .chat-bubble.assistant {
+      align-self: flex-start;
+      background: var(--color-bg-surface);
+      border: 1px solid var(--color-border-default);
+      color: var(--color-text-primary);
+      border-bottom-left-radius: 2px;
+    }
+    .chat-input-area {
+      border-top: 1px solid var(--color-border-default);
+      padding: 0.75rem 1rem;
+      background: var(--color-bg-surface);
+      display: flex;
+      gap: 0.6rem;
+    }
+    .chat-textarea {
+      flex: 1;
+      background: var(--color-bg-canvas);
+      border: 1px solid var(--color-border-default);
+      border-radius: var(--radius-md);
+      padding: 0.5rem 0.75rem;
+      color: var(--color-text-primary);
+      font-family: inherit;
+      font-size: var(--font-size-sm);
+      resize: none;
+      outline: none;
+      height: 40px;
+    }
+    .chat-textarea:focus { border-color: var(--color-accent-primary); }
+
+    .typing-cursor {
+      display: inline-block;
+      width: 8px;
+      height: 15px;
+      background: var(--color-accent-primary);
+      margin-left: 2px;
+      vertical-align: middle;
+      animation: blink 0.8s infinite;
+    }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+    /* 模型引擎厂商卡片网格 */
+    .provider-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 0.75rem;
+    }
+    .provider-card {
+      background: var(--color-bg-panel);
+      border: 1px solid var(--color-border-default);
+      border-radius: var(--radius-md);
+      padding: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .provider-card:hover {
+      border-color: var(--color-accent-primary);
+      background: var(--color-bg-subtle);
+    }
+    .provider-card.selected {
+      border-color: var(--color-accent-primary);
+      background: var(--color-accent-subtle);
+    }
+    .provider-name {
+      font-size: var(--font-size-sm);
+      font-weight: 700;
+      color: var(--color-text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .provider-model {
+      font-size: var(--font-size-xs);
+      font-family: var(--font-mono);
+      color: var(--color-text-muted);
+    }
+
+    /* 运行日志控制台 */
+    .terminal-console {
+      background: var(--terminal-bg);
+      border: 1px solid var(--color-border-default);
+      border-radius: var(--radius-md);
+      padding: 0.75rem 1rem;
+      height: 320px;
+      overflow-y: auto;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      line-height: 1.55;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .log-line {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-start;
+      word-break: break-all;
+    }
+    .log-time { color: var(--color-text-muted); flex-shrink: 0; }
+    .log-tag { font-weight: 700; flex-shrink: 0; }
+    .log-tag.INFO { color: var(--color-accent-primary); }
+    .log-tag.HIT { color: var(--color-success); }
+    .log-tag.MISS { color: var(--color-danger); }
+    .log-tag.SAFE { color: var(--color-success); }
+    .log-tag.WARN { color: var(--color-warning); }
+    .log-tag.ERROR { color: var(--color-danger); }
+    .log-tag.SUCCESS { color: var(--color-success); }
+    .log-msg { color: var(--color-text-primary); }
+
+    /* 响应式断点 */
+    @media (max-width: 900px) {
+      .header-top { flex-direction: column; align-items: flex-start; }
+      .header-actions { width: 100%; justify-content: space-between; }
+      .playback-dock { flex-direction: column; align-items: stretch; }
+      .timeline-container { width: 100%; }
+      .main-container { padding: 1rem; }
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- 顶栏 Showcase Header -->
+  <header class="showcase-header">
+    <div class="header-top">
+      <div class="brand-section">
+        <div class="brand-logo">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+            <rect x="9" y="9" width="6" height="6"></rect>
+            <line x1="9" y1="1" x2="9" y2="4"></line>
+            <line x1="15" y1="1" x2="15" y2="4"></line>
+            <line x1="9" y1="20" x2="9" y2="23"></line>
+            <line x1="15" y1="20" x2="15" y2="23"></line>
+            <line x1="20" y1="9" x2="23" y2="9"></line>
+            <line x1="20" y1="14" x2="23" y2="14"></line>
+            <line x1="1" y1="9" x2="4" y2="9"></line>
+            <line x1="1" y1="14" x2="4" y2="14"></line>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <div class="brand-title">
+            <span>os-visualizer</span>
+            <span class="brand-version">v1.0.0</span>
+          </div>
+          <span class="brand-subtitle">操作系统核心原理可视化教学平台 · 纯前端静态展厅</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <a href="https://github.com/yuhang234/os-visualizer" target="_blank" rel="noopener noreferrer" class="btn btn-default btn-sm">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+          <span>GitHub 仓库</span>
+        </a>
+
+        <a href="https://github.com/yuhang234/os-visualizer/releases/tag/v1.0.0" target="_blank" rel="noopener noreferrer" class="btn btn-default btn-sm">
+          <span>📦 Release v1.0.0</span>
+        </a>
+
+        <!-- 主题切换 (跟随系统 / 深色 / 浅色) -->
+        <button id="btn-theme-cycle" class="btn btn-default btn-sm" title="切换深色/浅色/跟随系统主题">
+          <span id="theme-btn-icon">☀️</span>
+          <span id="theme-btn-text">主题: 深色</span>
+        </button>
+
+        <!-- 音效开关 -->
+        <button id="btn-sound-toggle" class="btn btn-default btn-sm" title="开关 Web Audio 交互音效">
+          <span id="sound-btn-icon">🔊</span>
+          <span id="sound-btn-text">音效: 开</span>
+        </button>
+
+        <!-- 用户登录状态徽章 -->
+        <div id="top-user-badge" class="user-badge" title="点击查看登录与身份状态">
+          <div class="user-avatar" id="top-user-avatar">游</div>
+          <span id="top-user-name">游客体验中</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 顶部快速导航 Tab 栏 -->
+    <nav class="header-nav">
+      <div class="nav-tab active" data-target="view-overview">🏠 功能总览</div>
+      <div class="nav-tab" data-target="view-page-rep">📄 页面置换算法</div>
+      <div class="nav-tab" data-target="view-banker">🛡️ 银行家算法</div>
+      <div class="nav-tab" data-target="view-threads">🧵 多线程并发</div>
+      <div class="nav-tab" data-target="view-ai-chat">🤖 AI 助教对话</div>
+      <div class="nav-tab" data-target="view-engine-settings">⚙️ 模型引擎设置</div>
+      <div class="nav-tab" data-target="view-login">👤 登录 / 游客</div>
+      <div class="nav-tab" data-target="view-audio">🔊 音效演示</div>
+      <div class="nav-tab" data-target="view-console">📜 控制台日志</div>
+    </nav>
+  </header>
+
+  <!-- 主体工作区 Main Container -->
+  <main class="main-container">
+
+    <!-- 1. 功能总览视图 VIEW OVERVIEW -->
+    <section id="view-overview" class="view-section active">
+      <div class="hero-banner">
+        <div class="hero-title">
+          <span>操作系统核心原理可视化教学平台</span>
+          <span class="badge badge-primary">产品展厅 Showcase</span>
+        </div>
+        <p class="hero-desc">
+          本展厅为 <strong>os-visualizer</strong> 开源教学平台的纯前端独立静态展示页。我们通过浏览器内的状态机与预生成数据集，原汁原味地还原了操作系统的核心实验交互、多模型 AI 助教打字流、引擎管理中心与 Web Audio 程序化音效，<strong>零后端依赖、零外部网络请求，可直接离线双击运行</strong>。
+        </p>
+        <div class="hero-tags">
+          <span class="badge badge-info">🚀 纯静态单文件</span>
+          <span class="badge badge-success">⚡ 零网络请求</span>
+          <span class="badge badge-primary">🌓 深浅双主题</span>
+          <span class="badge badge-warning">🔊 Web Audio 合成音效</span>
+          <span class="badge badge-info">📚 v1.0.0 发布</span>
+        </div>
+      </div>
+
+      <div class="showcase-disclaimer">
+        <div>
+          <strong>💡 展厅说明：</strong> 本页面为纯前端模拟展厅，所有计算均在浏览器本地完成。在真实 <code>os-visualizer</code> 产品中，系统具备完整的 FastAPI 高性能计算后端、多用户 SQLite 数据库漫游与真实大模型 SSE 流式接入。
+        </div>
+        <a href="https://github.com/yuhang234/os-visualizer" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
+          前往 GitHub 查看完整工程 ➔
+        </a>
+      </div>
+
+      <div class="overview-grid">
+        <!-- 卡片 1: 页面置换算法 -->
+        <div class="feature-card" data-jump="view-page-rep">
+          <div class="feature-card-top">
+            <div class="feature-icon-box">📄</div>
+            <div class="feature-card-body">
+              <h3>页面置换算法实验室</h3>
+              <p>完整支持 FIFO、LRU、OPT 与 CLOCK 四大主流置换算法，支持步进、O(1) 快照回退、倍速播放，实时高亮命中与缺页，动态统计缺页率指标。</p>
+            </div>
+          </div>
+          <div class="feature-card-footer">
+            <span class="badge badge-success">本地重算步进</span>
+            <span class="btn btn-sm btn-default">立即体验 ➔</span>
+          </div>
+        </div>
+
+        <!-- 卡片 2: 银行家算法 -->
+        <div class="feature-card" data-jump="view-banker">
+          <div class="feature-card-top">
+            <div class="feature-icon-box">🛡️</div>
+            <div class="feature-card-body">
+              <h3>银行家死锁规避实验室</h3>
+              <p>预置经典 5 进程 3 资源矩阵（Max / Alloc / Need / Available），多步动画演示安全序列推导过程；模拟资源申请并演示死锁风险拒绝与回滚。</p>
+            </div>
+          </div>
+          <div class="feature-card-footer">
+            <span class="badge badge-success">安全性推导动画</span>
+            <span class="btn btn-sm btn-default">立即体验 ➔</span>
+          </div>
+        </div>
+
+        <!-- 卡片 3: 多线程并发 -->
+        <div class="feature-card" data-jump="view-threads">
+          <div class="feature-card-top">
+            <div class="feature-icon-box">🧵</div>
+            <div class="feature-card-body">
+              <h3>多线程并发与同步互斥</h3>
+              <p>经典有界缓冲区生产者-消费者模型，环形队列槽位动态展示，联动 Mutex、Empty 与 Full 三大同步原语，直观呈现线程阻塞与唤醒。</p>
+            </div>
+          </div>
+          <div class="feature-card-footer">
+            <span class="badge badge-success">环形槽位动画</span>
+            <span class="btn btn-sm btn-default">立即体验 ➔</span>
+          </div>
+        </div>
+
+        <!-- 卡片 4: AI 助教对话 -->
+        <div class="feature-card" data-jump="view-ai-chat">
+          <div class="feature-card-top">
+            <div class="feature-icon-box">🤖</div>
+            <div class="feature-card-body">
+              <h3>多模型 AI 教学助理</h3>
+              <p>模拟 SSE 流式打字机逐字输出（带呼吸光标），支持切换内置 / DeepSeek / 本地 Ollama 引擎标签，演示 Markdown 与操作系统公式渲染效果。</p>
+            </div>
+          </div>
+          <div class="feature-card-footer">
+            <span class="badge badge-primary">打字机流式输出</span>
+            <span class="btn btn-sm btn-default">立即体验 ➔</span>
+          </div>
+        </div>
+
+        <!-- 卡片 5: 模型引擎设置 -->
+        <div class="feature-card" data-jump="view-engine-settings">
+          <div class="feature-card-top">
+            <div class="feature-icon-box">⚙️</div>
+            <div class="feature-card-body">
+              <h3>模型引擎设置中心</h3>
+              <p>展示 12 家云端主流厂商模板、4 大本地部署运行时（Ollama / LM Studio / llama.cpp / vLLM）探测，以及 4 款离线小模型五态生命周期与下载进度条。</p>
+            </div>
+          </div>
+          <div class="feature-card-footer">
+            <span class="badge badge-info">12厂商 + 本地探测</span>
+            <span class="btn btn-sm btn-default">立即体验 ➔</span>
+          </div>
+        </div>
+
+        <!-- 卡片 6: 用户鉴权体系 -->
+        <div class="feature-card" data-jump="view-login">
+          <div class="feature-card-top">
+            <div class="feature-icon-box">👤</div>
+            <div class="feature-card-body">
+              <h3>用户鉴权与游客模式</h3>
+              <p>支持账号登录/注册表单前端校验，模拟认证成功后全局身份切换为正式学员；支持一键免登录的“游客模式”，满足零门槛体验需求。</p>
+            </div>
+          </div>
+          <div class="feature-card-footer">
+            <span class="badge badge-warning">免密游客 + 学员认证</span>
+            <span class="btn btn-sm btn-default">立即体验 ➔</span>
+          </div>
+        </div>
+
+        <!-- 卡片 7: Web Audio 音效 -->
+        <div class="feature-card" data-jump="view-audio">
+          <div class="feature-card-top">
+            <div class="feature-icon-box">🔊</div>
+            <div class="feature-card-body">
+              <h3>Web Audio 程序化音效</h3>
+              <p>基于 HTML5 Web Audio API 底层纯代码合成音调（正弦波/三角波/锯齿波），实现零音频静态文件依赖的命中、缺页、死锁警报与单步音效。</p>
+            </div>
+          </div>
+          <div class="feature-card-footer">
+            <span class="badge badge-primary">零音频文件依赖</span>
+            <span class="btn btn-sm btn-default">立即体验 ➔</span>
+          </div>
+        </div>
+
+        <!-- 卡片 8: 运行日志控制台 -->
+        <div class="feature-card" data-jump="view-console">
+          <div class="feature-card-top">
+            <div class="feature-icon-box">📜</div>
+            <div class="feature-card-body">
+              <h3>全局运行日志审计台</h3>
+              <p>统一记录展厅内所有操作事件，支持时间戳、日志级别高亮、事件过滤与一键清空，确保算法推导与状态流转过程透明可审计。</p>
+            </div>
+          </div>
+          <div class="feature-card-footer">
+            <span class="badge badge-info">实时留痕与过滤</span>
+            <span class="btn btn-sm btn-default">立即体验 ➔</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 页面置换算法 VIEW PAGE REPLACEMENT -->
+    <section id="view-page-rep" class="view-section">
+      <div class="showcase-disclaimer">
+        <div>
+          <strong>💡 展厅说明：</strong> 当前页面置换算法轨迹由浏览器本地 JavaScript 纯前端计算生成，支持 O(1) 快照单步回退与任意算法切换。真实产品中由 FastAPI 后端高性能算法库支持任意大序列矩阵与 Belady 自动比对分析。
+        </div>
+        <a href="https://github.com/yuhang234/os-visualizer" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
+          查看真实产品源码 ➔
+        </a>
+      </div>
+
+      <!-- 参数配置栏 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>⚙️ 算法与参数配置</span>
+            <span class="badge badge-primary" id="rep-algo-badge">FIFO 算法</span>
+          </div>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button id="rep-preset-textbook" class="btn btn-default btn-sm">教材标准序列 (20项)</button>
+            <button id="rep-preset-belady" class="btn btn-default btn-sm">Belady 异常序列 (12项)</button>
+            <button id="rep-preset-random" class="btn btn-default btn-sm">🎲 随机生成</button>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:1.25rem; flex-wrap:wrap; align-items:center;">
+          <div style="display:flex; align-items:center; gap:0.75rem;">
+            <label style="font-size:var(--font-size-sm); font-weight:600;">置换算法：</label>
+            <label style="display:inline-flex; align-items:center; gap:0.3rem; font-size:var(--font-size-sm); cursor:pointer;">
+              <input type="radio" name="rep-algo" value="FIFO" checked> FIFO 先进先出
+            </label>
+            <label style="display:inline-flex; align-items:center; gap:0.3rem; font-size:var(--font-size-sm); cursor:pointer;">
+              <input type="radio" name="rep-algo" value="LRU"> LRU 最近最久未用
+            </label>
+            <label style="display:inline-flex; align-items:center; gap:0.3rem; font-size:var(--font-size-sm); cursor:pointer;">
+              <input type="radio" name="rep-algo" value="OPT"> OPT 最佳置换
+            </label>
+            <label style="display:inline-flex; align-items:center; gap:0.3rem; font-size:var(--font-size-sm); cursor:pointer;">
+              <input type="radio" name="rep-algo" value="CLOCK"> CLOCK 时钟置换
+            </label>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <label style="font-size:var(--font-size-sm); font-weight:600;">物理页框数：</label>
+            <select id="rep-frames-count" class="btn btn-default btn-sm" style="padding:0.25rem 0.5rem;">
+              <option value="2">2 个页框</option>
+              <option value="3" selected>3 个页框 (标准)</option>
+              <option value="4">4 个页框</option>
+              <option value="5">5 个页框</option>
+            </select>
+          </div>
+
+          <button id="rep-btn-recalc" class="btn btn-primary btn-sm">⚡ 重新生成轨迹</button>
+        </div>
+
+        <div style="margin-top:0.75rem;">
+          <label style="font-size:var(--font-size-xs); color:var(--color-text-muted);">访问参考串 (逗号分隔)：</label>
+          <input type="text" id="rep-ref-input" value="7, 0, 1, 2, 0, 3, 0, 4, 2, 3, 0, 3, 2, 1, 2, 0, 1, 7, 0, 1"
+                 style="width:100%; padding:0.4rem 0.6rem; border-radius:var(--radius-md); border:1px solid var(--color-border-default); background:var(--color-bg-canvas); color:var(--color-text-primary); font-family:var(--font-mono); font-size:var(--font-size-sm); margin-top:0.25rem;">
+        </div>
+      </div>
+
+      <!-- 主大屏与指标展示 -->
+      <div style="display:grid; grid-template-columns: 2fr 1fr; gap:1.25rem;">
+        <!-- 左侧：时序参考串与页框插槽网格 -->
+        <div class="card" style="display:flex; flex-direction:column; gap:1rem;">
+          <div class="card-header">
+            <div class="card-title">
+              <span id="rep-step-badge">步骤 1 / 20</span>
+              <span class="badge" id="rep-status-badge">未开始</span>
+            </div>
+            <span style="font-size:var(--font-size-xs); color:var(--color-text-muted);">点击下方参考串可直接跳转对应步</span>
+          </div>
+
+          <div>
+            <div style="font-size:var(--font-size-xs); color:var(--color-text-secondary); margin-bottom:0.35rem;">时序页面参考串 (Reference String)：</div>
+            <div class="rep-stream-list" id="rep-stream-list"></div>
+          </div>
+
+          <div>
+            <div style="font-size:var(--font-size-xs); color:var(--color-text-secondary); margin-bottom:0.35rem;">物理内存页框状态 (Physical Frames)：</div>
+            <div class="frame-slots-grid" id="rep-frames-grid"></div>
+          </div>
+
+          <!-- 原理解释卡片 -->
+          <div style="background:var(--color-bg-subtle); border-left:3px solid var(--color-accent-primary); border-radius:var(--radius-sm); padding:0.65rem 0.85rem; font-size:var(--font-size-sm);">
+            <div style="font-weight:700; color:var(--color-accent-primary); margin-bottom:0.2rem;">💡 置换原理解析：</div>
+            <div id="rep-rationale-text" style="color:var(--color-text-secondary); line-height:1.5;">加载中...</div>
+          </div>
+        </div>
+
+        <!-- 右侧：实时指标看板与圆环进度 -->
+        <div class="card" style="display:flex; flex-direction:column; justify-content:space-between; gap:1rem;">
+          <div class="card-header">
+            <div class="card-title">📊 实时执行指标</div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem;">
+            <div style="background:var(--color-bg-panel); border:1px solid var(--color-border-subtle); border-radius:var(--radius-md); padding:0.75rem; text-align:center;">
+              <div style="font-size:var(--font-size-xs); color:var(--color-text-muted);">累计访问</div>
+              <div id="metric-total" style="font-size:1.6rem; font-weight:800; font-family:var(--font-mono); color:var(--color-text-primary);">0</div>
+            </div>
+            <div style="background:var(--color-bg-panel); border:1px solid var(--color-border-subtle); border-radius:var(--radius-md); padding:0.75rem; text-align:center;">
+              <div style="font-size:var(--font-size-xs); color:var(--color-text-muted);">缺页次数 (Miss)</div>
+              <div id="metric-faults" style="font-size:1.6rem; font-weight:800; font-family:var(--font-mono); color:var(--color-danger);">0</div>
+            </div>
+            <div style="background:var(--color-bg-panel); border:1px solid var(--color-border-subtle); border-radius:var(--radius-md); padding:0.75rem; text-align:center;">
+              <div style="font-size:var(--font-size-xs); color:var(--color-text-muted);">命中次数 (Hit)</div>
+              <div id="metric-hits" style="font-size:1.6rem; font-weight:800; font-family:var(--font-mono); color:var(--color-success);">0</div>
+            </div>
+            <div style="background:var(--color-bg-panel); border:1px solid var(--color-border-subtle); border-radius:var(--radius-md); padding:0.75rem; text-align:center;">
+              <div style="font-size:var(--font-size-xs); color:var(--color-text-muted);">当前缺页率</div>
+              <div id="metric-fault-rate" style="font-size:1.6rem; font-weight:800; font-family:var(--font-mono); color:var(--color-accent-primary);">0%</div>
+            </div>
+          </div>
+
+          <!-- SVG 缺页率动态进度环 -->
+          <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:1rem 0;">
+            <div style="position:relative; width:120px; height:120px; display:flex; align-items:center; justify-content:center;">
+              <svg width="120" height="120" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="42" fill="none" stroke="var(--color-border-default)" stroke-width="8"></circle>
+                <circle id="rep-gauge-circle" cx="50" cy="50" r="42" fill="none" stroke="var(--color-accent-primary)" stroke-width="8"
+                        stroke-dasharray="264" stroke-dashoffset="132" stroke-linecap="round" transform="rotate(-90 50 50)"></circle>
+              </svg>
+              <div style="position:absolute; text-align:center;">
+                <div id="gauge-percent-text" style="font-size:1.3rem; font-weight:800; font-family:var(--font-mono); color:var(--color-text-primary);">0%</div>
+                <div style="font-size:0.65rem; color:var(--color-text-muted);">缺页率</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="font-size:var(--font-size-xs); color:var(--color-text-muted); text-align:center;">
+            注：命中率 = 100% - 缺页率。LRU 与 OPT 算法天然免疫 Belady 异常。
+          </div>
+        </div>
+      </div>
+
+      <!-- 底部全局播放控制栏 Dock -->
+      <div class="playback-dock">
+        <div class="playback-controls">
+          <button id="rep-btn-first" class="btn btn-default btn-sm" title="跳转至第 1 步">|◀ 首步</button>
+          <button id="rep-btn-prev" class="btn btn-default btn-sm" title="O(1) 快照回退至上一步">◀ 上一步</button>
+          <button id="rep-btn-play" class="btn btn-primary" title="自动播放/暂停">▶ 播放</button>
+          <button id="rep-btn-next" class="btn btn-default btn-sm" title="前进至下一步">下一步 ▶</button>
+          <button id="rep-btn-last" class="btn btn-default btn-sm" title="直接跳至最后一步">末步 ▶|</button>
+        </div>
+
+        <div class="timeline-container">
+          <span style="font-size:var(--font-size-xs); color:var(--color-text-muted);">进度:</span>
+          <input type="range" id="rep-timeline-slider" class="timeline-slider" min="0" max="19" value="0">
+          <span id="rep-timeline-text" style="font-size:var(--font-size-xs); font-family:var(--font-mono); color:var(--color-text-secondary); min-width:45px;">1/20</span>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          <span style="font-size:var(--font-size-xs); color:var(--color-text-muted);">速度：</span>
+          <select id="rep-speed-select" class="btn btn-default btn-sm">
+            <option value="2000">0.5x (慢速)</option>
+            <option value="1000" selected>1.0x (标准)</option>
+            <option value="500">2.0x (快速)</option>
+            <option value="250">4.0x (极速)</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. 银行家算法 VIEW BANKER -->
+    <section id="view-banker" class="view-section">
+      <div class="showcase-disclaimer">
+        <div>
+          <strong>💡 展厅说明：</strong> 本银行家算法演示包含标准 5 进程 3 资源矩阵。用户可直观体验安全性检查的多步推导演示，并测试资源请求在通过和死锁回滚时的不同分支。
+        </div>
+        <a href="https://github.com/yuhang234/os-visualizer" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
+          查看真实产品源码 ➔
+        </a>
+      </div>
+
+      <!-- 资源与矩阵状态 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>🛡️ 资源矩阵状态看板 (5 进程 P0~P4, 3 类资源 A/B/C)</span>
+            <span class="badge badge-success" id="banker-avail-badge">Available: [ A:3, B:3, C:2 ]</span>
+          </div>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button id="banker-preset-default" class="btn btn-default btn-sm">教材标准安全案例</button>
+            <button id="banker-preset-tight" class="btn btn-default btn-sm">资源紧俏临界案例</button>
+            <button id="banker-btn-reset" class="btn btn-default btn-sm">🔄 恢复初始状态</button>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1rem;">
+          <!-- Max 矩阵 -->
+          <div>
+            <div style="font-size:var(--font-size-xs); font-weight:700; color:var(--color-text-secondary); margin-bottom:0.35rem;">Max 矩阵 (最大需求)：</div>
+            <div class="table-container">
+              <table class="os-table">
+                <thead><tr><th>进程</th><th>A</th><th>B</th><th>C</th></tr></thead>
+                <tbody id="banker-table-max"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Allocation 矩阵 -->
+          <div>
+            <div style="font-size:var(--font-size-xs); font-weight:700; color:var(--color-text-secondary); margin-bottom:0.35rem;">Allocation 矩阵 (已分配)：</div>
+            <div class="table-container">
+              <table class="os-table">
+                <thead><tr><th>进程</th><th>A</th><th>B</th><th>C</th></tr></thead>
+                <tbody id="banker-table-alloc"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Need 矩阵 -->
+          <div>
+            <div style="font-size:var(--font-size-xs); font-weight:700; color:var(--color-text-secondary); margin-bottom:0.35rem;">Need 矩阵 (需求 = Max - Alloc)：</div>
+            <div class="table-container">
+              <table class="os-table">
+                <thead><tr><th>进程</th><th>A</th><th>B</th><th>C</th></tr></thead>
+                <tbody id="banker-table-need"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 安全性检查推导演示大屏 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>🔍 安全性检查推导动态大屏 (Work & Finish 演进)</span>
+            <span class="badge" id="banker-status-badge">等待运行</span>
+          </div>
+          <button id="banker-btn-safety" class="btn btn-primary btn-sm">▶ 运行安全性检查 (逐步推导)</button>
+        </div>
+
+        <div class="table-container" style="margin-bottom:1rem;">
+          <table class="os-table">
+            <thead>
+              <tr>
+                <th>检查步</th>
+                <th>候选进程</th>
+                <th>Work (检查前可用)</th>
+                <th>Need (需求)</th>
+                <th>判定条件 (Need ≤ Work)</th>
+                <th>Allocation (已分配)</th>
+                <th>Work+Alloc (释放后可用)</th>
+                <th>Finish 状态</th>
+              </tr>
+            </thead>
+            <tbody id="banker-table-deduction">
+              <tr><td colspan="8" style="color:var(--color-text-muted); padding:1.5rem;">点击上方「运行安全性检查」按钮开始逐步动画推导</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; background:var(--color-bg-subtle); padding:0.85rem 1.25rem; border-radius:var(--radius-md);">
+          <span style="font-size:var(--font-size-sm); font-weight:700;">推导出的安全序列 (Safe Sequence)：</span>
+          <div id="banker-safe-sequence" style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+            <span style="color:var(--color-text-muted); font-size:var(--font-size-sm);">尚未生成</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 资源分配请求试探沙箱 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🚀 动态资源请求交互判定沙箱 (Resource-Request Test)</div>
+        </div>
+
+        <div style="display:flex; gap:1.25rem; flex-wrap:wrap; align-items:center; margin-bottom:1rem;">
+          <div style="display:flex; align-items:center; gap:0.4rem;">
+            <label style="font-size:var(--font-size-sm); font-weight:600;">申请进程：</label>
+            <select id="banker-req-p" class="btn btn-default btn-sm">
+              <option value="0">P0</option>
+              <option value="1" selected>P1</option>
+              <option value="2">P2</option>
+              <option value="3">P3</option>
+              <option value="4">P4</option>
+            </select>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <label style="font-size:var(--font-size-sm); font-weight:600;">请求量：</label>
+            <span>A:</span><input type="number" id="banker-req-a" value="1" min="0" max="10" style="width:50px; padding:0.2rem; text-align:center; border:1px solid var(--color-border-default); border-radius:var(--radius-sm); background:var(--color-bg-canvas); color:var(--color-text-primary);">
+            <span>B:</span><input type="number" id="banker-req-b" value="0" min="0" max="10" style="width:50px; padding:0.2rem; text-align:center; border:1px solid var(--color-border-default); border-radius:var(--radius-sm); background:var(--color-bg-canvas); color:var(--color-text-primary);">
+            <span>C:</span><input type="number" id="banker-req-c" value="2" min="0" max="10" style="width:50px; padding:0.2rem; text-align:center; border:1px solid var(--color-border-default); border-radius:var(--radius-sm); background:var(--color-bg-canvas); color:var(--color-text-primary);">
+          </div>
+
+          <button id="banker-btn-submit-req" class="btn btn-primary btn-sm">提交申请并判定</button>
+        </div>
+
+        <!-- 预设经典场景快捷按钮 -->
+        <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;">
+          <span style="font-size:var(--font-size-xs); color:var(--color-text-muted); align-self:center;">快速测试场景：</span>
+          <button id="banker-demo-safe-req" class="btn btn-default btn-sm">🟢 场景 A：P1 申请 (1, 0, 2) —— 满足且安全</button>
+          <button id="banker-demo-deadlock-req" class="btn btn-default btn-sm">🔴 场景 B：P4 申请 (3, 3, 0) —— 导致死锁风险 拒绝并回滚</button>
+          <button id="banker-demo-overneed-req" class="btn btn-default btn-sm">⚠️ 场景 C：P0 申请 (8, 0, 0) —— 超过 Need 拒绝</button>
+        </div>
+
+        <!-- 判定反馈卡片 -->
+        <div id="banker-req-result-box" style="display:none; padding:0.85rem 1.25rem; border-radius:var(--radius-md); font-size:var(--font-size-sm); line-height:1.6;"></div>
+      </div>
+    </section>
+
+    <!-- 4. 多线程并发互斥 VIEW THREADS -->
+    <section id="view-threads" class="view-section">
+      <div class="showcase-disclaimer">
+        <div>
+          <strong>💡 展厅说明：</strong> 本模块采用 HTML5 与 CSS 动态还原经典的“有界缓冲区生产者-消费者模型”，演示信号量 <code>mutex</code>、<code>empty</code> 与 <code>full</code> 在线程调度中的互斥与同步状态演进。
+        </div>
+        <a href="https://github.com/yuhang234/os-visualizer" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
+          查看真实产品源码 ➔
+        </a>
+      </div>
+
+      <!-- 控制台栏 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🧵 生产者-消费者多线程同步模型 (有界缓冲区容量 = 5)</div>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button id="threads-btn-produce" class="btn btn-primary btn-sm">🏭 生产者 P1 生产 1 个</button>
+            <button id="threads-btn-consume" class="btn btn-success btn-sm">📦 消费者 C1 消费 1 个</button>
+            <button id="threads-btn-auto" class="btn btn-default btn-sm">▶ 启动自动循环模拟</button>
+            <button id="threads-btn-fill" class="btn btn-default btn-sm">⚠️ 连续生产至满 (触发阻塞)</button>
+            <button id="threads-btn-empty" class="btn btn-default btn-sm">⚠️ 连续消费至空 (触发阻塞)</button>
+            <button id="threads-btn-reset" class="btn btn-default btn-sm">🔄 重置缓冲区</button>
+          </div>
+        </div>
+
+        <!-- 环形缓冲区槽位大屏 -->
+        <div style="background:var(--color-bg-subtle); border-radius:var(--radius-lg); padding:1.5rem; text-align:center;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; font-size:var(--font-size-sm);">
+            <span><strong>共享缓冲区 (Bounded Buffer) 状态：</strong></span>
+            <span id="buffer-stat-text" style="font-family:var(--font-mono); font-weight:700;">当前产品数：0 / 5 (空闲)</span>
+          </div>
+
+          <div class="buffer-slots-row" id="buffer-slots-row">
+            <!-- 5 个槽位 -->
+          </div>
+
+          <div style="display:flex; justify-content:center; gap:2rem; font-size:var(--font-size-xs); color:var(--color-text-secondary); margin-top:0.5rem;">
+            <div>写入指针 (in): <span id="ptr-in" style="font-weight:700; color:var(--color-accent-primary);">槽位 0</span></div>
+            <div>读取指针 (out): <span id="ptr-out" style="font-weight:700; color:var(--color-success);">槽位 0</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 同步原语与线程池状态 -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem;">
+        <!-- 同步原语看板 -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🔒 同步原语与信号量状态</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:1rem;">
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:var(--font-size-sm); margin-bottom:0.25rem;">
+                <span>互斥锁 Mutex (二值信号量)：</span>
+                <span id="sem-mutex-val" class="badge badge-success">自由 (Value: 1)</span>
+              </div>
+              <div style="font-size:var(--font-size-xs); color:var(--color-text-muted);">用于确保对共享缓冲区槽位的原子排他性访问</div>
+            </div>
+
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:var(--font-size-sm); margin-bottom:0.25rem;">
+                <span>空位信号量 Empty：</span>
+                <span id="sem-empty-val" style="font-weight:700; font-family:var(--font-mono);">5 / 5</span>
+              </div>
+              <div style="background:var(--color-bg-canvas); height:8px; border-radius:var(--radius-full); overflow:hidden;">
+                <div id="sem-empty-bar" style="background:var(--color-accent-primary); width:100%; height:100%;"></div>
+              </div>
+            </div>
+
+            <div>
+              <div style="display:flex; justify-content:space-between; font-size:var(--font-size-sm); margin-bottom:0.25rem;">
+                <span>产品信号量 Full：</span>
+                <span id="sem-full-val" style="font-weight:700; font-family:var(--font-mono);">0 / 5</span>
+              </div>
+              <div style="background:var(--color-bg-canvas); height:8px; border-radius:var(--radius-full); overflow:hidden;">
+                <div id="sem-full-bar" style="background:var(--color-success); width:0%; height:100%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 线程池工作状态 -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">👥 线程运行状态与调用栈</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:0.75rem;">
+            <div style="background:var(--color-bg-panel); border:1px solid var(--color-border-subtle); border-radius:var(--radius-md); padding:0.65rem 0.85rem; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <div style="font-weight:700; font-size:var(--font-size-sm);">生产者线程 P1</div>
+                <div id="thread-p1-desc" style="font-size:var(--font-size-xs); color:var(--color-text-muted);">等待生产指令</div>
+              </div>
+              <span id="thread-p1-badge" class="badge badge-info">就绪休眠</span>
+            </div>
+
+            <div style="background:var(--color-bg-panel); border:1px solid var(--color-border-subtle); border-radius:var(--radius-md); padding:0.65rem 0.85rem; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <div style="font-weight:700; font-size:var(--font-size-sm);">生产者线程 P2</div>
+                <div id="thread-p2-desc" style="font-size:var(--font-size-xs); color:var(--color-text-muted);">就绪中</div>
+              </div>
+              <span id="thread-p2-badge" class="badge badge-info">就绪休眠</span>
+            </div>
+
+            <div style="background:var(--color-bg-panel); border:1px solid var(--color-border-subtle); border-radius:var(--radius-md); padding:0.65rem 0.85rem; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <div style="font-weight:700; font-size:var(--font-size-sm);">消费者线程 C1</div>
+                <div id="thread-c1-desc" style="font-size:var(--font-size-xs); color:var(--color-text-muted);">等待消费指令</div>
+              </div>
+              <span id="thread-c1-badge" class="badge badge-info">就绪休眠</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 经典同步伪代码高亮对照 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📖 经典 PV 原语伪代码执行逻辑联动</div>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; font-family:var(--font-mono); font-size:var(--font-size-xs);">
+          <div style="background:var(--color-bg-panel); padding:0.75rem; border-radius:var(--radius-md); border:1px solid var(--color-border-subtle);">
+            <div style="color:var(--color-accent-primary); font-weight:700; margin-bottom:0.4rem;">// 生产者 Producer 逻辑</div>
+            <div id="code-p-1">1: item = produce_item();</div>
+            <div id="code-p-2">2: P(empty); // 申请空槽位 (可能阻塞)</div>
+            <div id="code-p-3">3: P(mutex); // 抢占临界区互斥锁</div>
+            <div id="code-p-4">4: insert_item(item); // 写入缓冲区槽位</div>
+            <div id="code-p-5">5: V(mutex); // 释放互斥锁</div>
+            <div id="code-p-6">6: V(full);  // 唤醒可能阻塞的消费者</div>
+          </div>
+
+          <div style="background:var(--color-bg-panel); padding:0.75rem; border-radius:var(--radius-md); border:1px solid var(--color-border-subtle);">
+            <div style="color:var(--color-success); font-weight:700; margin-bottom:0.4rem;">// 消费者 Consumer 逻辑</div>
+            <div id="code-c-1">1: P(full);  // 检查是否有可用产品 (可能阻塞)</div>
+            <div id="code-c-2">2: P(mutex); // 抢占临界区互斥锁</div>
+            <div id="code-c-3">3: item = remove_item(); // 取出产品</div>
+            <div id="code-c-4">4: V(mutex); // 释放互斥锁</div>
+            <div id="code-c-5">5: V(empty); // 唤醒可能阻塞的生产者</div>
+            <div id="code-c-6">6: consume_item(item);</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. AI 助教对话 VIEW AI CHAT -->
+    <section id="view-ai-chat" class="view-section">
+      <div class="showcase-disclaimer">
+        <div>
+          <strong>💡 展厅说明：</strong> AI 助教对话通过预设本地文本块模拟真实的 SSE 流式分片打字机输出（绝不发起外网请求）。支持 Markdown 结构排版与操作系统公式渲染。真实产品通过 FastAPI 后端直连 DeepSeek / Ollama / 豆包等主流模型。
+        </div>
+        <a href="https://github.com/yuhang234/os-visualizer" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
+          查看真实产品源码 ➔
+        </a>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>🤖 AI 教学助理互动室</span>
+            <span class="badge badge-primary" id="chat-engine-badge">内置离线引擎</span>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+            <span style="font-size:var(--font-size-xs); color:var(--color-text-muted);">切换推理模型：</span>
+            <button class="btn btn-default btn-sm active chat-engine-btn" data-engine="builtin">🤖 内置离线引擎</button>
+            <button class="btn btn-default btn-sm chat-engine-btn" data-engine="deepseek">⚡ DeepSeek-Reasoner</button>
+            <button class="btn btn-default btn-sm chat-engine-btn" data-engine="ollama">🦙 Ollama 本地模型</button>
+          </div>
+        </div>
+
+        <!-- 快捷问答提示词气泡 -->
+        <div style="display:flex; gap:0.5rem; overflow-x:auto; padding-bottom:0.5rem; margin-bottom:0.75rem;">
+          <button class="btn btn-default btn-sm chat-prompt-chip" data-q="为什么 Belady 现象在 LRU 中绝不会发生？">📌 Belady 现象在 LRU 中为何不发生？</button>
+          <button class="btn btn-default btn-sm chat-prompt-chip" data-q="银行家算法中，处于不安全状态就一定死锁吗？">📌 不安全状态与死锁的关系？</button>
+          <button class="btn btn-default btn-sm chat-prompt-chip" data-q="生产者消费者中，P(mutex) 和 P(empty) 顺序能否颠倒？">📌 信号量 P(mutex) 与 P(empty) 能颠倒吗？</button>
+          <button class="btn btn-default btn-sm chat-prompt-chip" data-q="请解释 CLOCK 置换算法的二次机会机制与巡查逻辑">📌 CLOCK 算法二次机会机制？</button>
+        </div>
+
+        <!-- 聊天流容器 -->
+        <div class="chat-box">
+          <div class="chat-messages" id="chat-messages">
+            <div class="chat-bubble assistant">
+              <div style="font-weight:700; color:var(--color-accent-primary); margin-bottom:0.25rem;">🤖 OS 教学助理</div>
+              <div>同学你好！我是你的操作系统原理智能助教。你可以点击上方的常用问题，或直接在底部输入框提问。我可以为你解析<strong>页面置换、银行家死锁、线程同步与虚拟内存</strong>等核心机制！</div>
+            </div>
+          </div>
+
+          <div style="padding:0.4rem 1rem; background:var(--color-bg-subtle); display:flex; justify-content:space-between; align-items:center; font-size:var(--font-size-xs); color:var(--color-text-muted);">
+            <div><span>⚡ 模拟 SSE 流式打字输出 | 零外部网络依赖</span></div>
+            <button id="chat-btn-stop" class="btn btn-danger btn-sm" style="display:none; padding:0.15rem 0.4rem;">⏹ 停止生成</button>
+          </div>
+
+          <div class="chat-input-area">
+            <textarea id="chat-input" class="chat-textarea" placeholder="输入你想咨询的操作系统原理问题（支持按 Enter 发送）..."></textarea>
+            <button id="chat-btn-send" class="btn btn-primary" style="padding:0.4rem 1rem;">发送</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. 模型引擎设置 VIEW ENGINE SETTINGS -->
+    <section id="view-engine-settings" class="view-section">
+      <div class="showcase-disclaimer">
+        <div>
+          <strong>💡 展厅说明：</strong> 本设置中心完整列出了设计契约（docs/design-spec.md 第 9、10 节）规定的 12 家主流云端厂商、4 大本地运行时以及 4 款离线小模型，并提供连通性 Ping 模拟与五态下载进度动画。
+        </div>
+        <a href="https://github.com/yuhang234/os-visualizer" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
+          查看真实产品源码 ➔
+        </a>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">⚙️ 模型引擎多源接入中心</div>
+          <div style="display:flex; gap:0.5rem;">
+            <button class="btn btn-default btn-sm active engine-subtab-btn" data-tab="engine-tab-providers">☁️ 12 家云端厂商模板</button>
+            <button class="btn btn-default btn-sm engine-subtab-btn" data-tab="engine-tab-local">💻 4 大本地运行时探测</button>
+            <button class="btn btn-default btn-sm engine-subtab-btn" data-tab="engine-tab-models">📦 4 款内置离线小模型</button>
+          </div>
+        </div>
+
+        <!-- 子 Tab 1: 12 家云端厂商模板 -->
+        <div id="engine-tab-providers" class="engine-subtab-content">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem;">
+            <div>
+              <div style="font-size:var(--font-size-xs); color:var(--color-text-secondary); margin-bottom:0.5rem; font-weight:700;">点击卡片载入官方标准配置：</div>
+              <div class="provider-grid" id="provider-cards-grid"></div>
+            </div>
+
+            <!-- 配置与连通性测试面板 -->
+            <div style="background:var(--color-bg-panel); border:1px solid var(--color-border-default); border-radius:var(--radius-lg); padding:1.25rem; display:flex; flex-direction:column; gap:0.85rem;">
+              <div style="font-weight:700; font-size:1.05rem; color:var(--color-accent-primary);" id="cur-p-title">OpenAI 配置</div>
+
+              <div>
+                <label style="font-size:var(--font-size-xs); color:var(--color-text-muted);">官方标准 Base URL：</label>
+                <input type="text" id="cur-p-base" readonly style="width:100%; padding:0.4rem; border-radius:var(--radius-sm); border:1px solid var(--color-border-default); background:var(--color-bg-canvas); color:var(--color-text-secondary); font-family:var(--font-mono); font-size:var(--font-size-sm); margin-top:0.2rem;">
+              </div>
+
+              <div>
+                <label style="font-size:var(--font-size-xs); color:var(--color-text-muted);">标准模型标识 (Model ID)：</label>
+                <input type="text" id="cur-p-model" readonly style="width:100%; padding:0.4rem; border-radius:var(--radius-sm); border:1px solid var(--color-border-default); background:var(--color-bg-canvas); color:var(--color-text-secondary); font-family:var(--font-mono); font-size:var(--font-size-sm); margin-top:0.2rem;">
+              </div>
+
+              <div>
+                <label style="font-size:var(--font-size-xs); color:var(--color-text-muted);">鉴权头字段名 (Auth Header)：</label>
+                <input type="text" id="cur-p-header" readonly style="width:100%; padding:0.4rem; border-radius:var(--radius-sm); border:1px solid var(--color-border-default); background:var(--color-bg-canvas); color:var(--color-text-secondary); font-family:var(--font-mono); font-size:var(--font-size-sm); margin-top:0.2rem;">
+              </div>
+
+              <div>
+                <label style="font-size:var(--font-size-xs); color:var(--color-text-muted);">API 访问密钥 (已掩码保护)：</label>
+                <div style="display:flex; gap:0.4rem; margin-top:0.2rem;">
+                  <input type="password" id="cur-p-key" value="sk-live9842fbc982348a12903" readonly style="flex:1; padding:0.4rem; border-radius:var(--radius-sm); border:1px solid var(--color-border-default); background:var(--color-bg-canvas); color:var(--color-text-primary); font-family:var(--font-mono); font-size:var(--font-size-sm);">
+                  <button id="btn-toggle-key-mask" class="btn btn-default btn-sm" title="显示/隐藏明文">👁</button>
+                </div>
+              </div>
+
+              <div style="margin-top:0.5rem; display:flex; gap:0.6rem; align-items:center;">
+                <button id="btn-test-ping" class="btn btn-primary btn-sm">⚡ 测试服务连通性 (Ping)</button>
+                <span id="ping-spinner" style="display:none; font-size:var(--font-size-xs); color:var(--color-accent-primary);">转圈探测中...</span>
+              </div>
+
+              <div id="ping-result-box" style="display:none; padding:0.75rem 1rem; border-radius:var(--radius-md); font-size:var(--font-size-sm); line-height:1.5;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 子 Tab 2: 4 大本地运行时探测 -->
+        <div id="engine-tab-local" class="engine-subtab-content" style="display:none;">
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:1rem;">
+            <!-- Ollama -->
+            <div class="card" style="background:var(--color-bg-panel);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                <strong>🦙 Ollama</strong>
+                <span class="badge badge-success" id="runtime-ollama-badge">在线 (Ready)</span>
+              </div>
+              <div style="font-size:var(--font-size-xs); color:var(--color-text-muted); margin-bottom:0.5rem;">默认端口: 11434 | http://localhost:11434</div>
+              <div style="font-size:var(--font-size-xs); color:var(--color-text-secondary); margin-bottom:0.75rem;">已发现本地模型：<code>qwen2.5:1.5b</code>, <code>deepseek-r1:1.5b</code></div>
+              <button class="btn btn-default btn-sm btn-reprobe" data-runtime="Ollama">🔄 重新探测</button>
+            </div>
+
+            <!-- LM Studio -->
+            <div class="card" style="background:var(--color-bg-panel);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                <strong>💻 LM Studio</strong>
+                <span class="badge badge-success" id="runtime-lmstudio-badge">在线 (Ready)</span>
+              </div>
+              <div style="font-size:var(--font-size-xs); color:var(--color-text-muted); margin-bottom:0.5rem;">默认端口: 1234 | http://localhost:1234</div>
+              <div style="font-size:var(--font-size-xs); color:var(--color-text-secondary); margin-bottom:0.75rem;">已发现本地模型：<code>llama-3.2-1b-instruct</code></div>
+              <button class="btn btn-default btn-sm btn-reprobe" data-runtime="LM Studio">🔄 重新探测</button>
+            </div>
+
+            <!-- llama.cpp -->
+            <div class="card" style="background:var(--color-bg-panel);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                <strong>⚡ llama.cpp Server</strong>
+                <span class="badge badge-success" id="runtime-llamacpp-badge">在线 (Ready)</span>
+              </div>
+              <div style="font-size:var(--font-size-xs); color:var(--color-text-muted); margin-bottom:0.5rem;">默认端口: 8080 | http://localhost:8080</div>
+              <div style="font-size:var(--font-size-xs); color:var(--color-text-secondary); margin-bottom:0.75rem;">已发现本地模型：<code>qwen2.5-0.5b-instruct.gguf</code></div>
+              <button class="btn btn-default btn-sm btn-reprobe" data-runtime="llama.cpp">🔄 重新探测</button>
+            </div>
+
+            <!-- vLLM -->
+            <div class="card" style="background:var(--color-bg-panel);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                <strong>🚀 vLLM</strong>
+                <span class="badge badge-success" id="runtime-vllm-badge">在线 (Ready)</span>
+              </div>
+              <div style="font-size:var(--font-size-xs); color:var(--color-text-muted); margin-bottom:0.5rem;">默认端口: 8000 | http://localhost:8000</div>
+              <div style="font-size:var(--font-size-xs); color:var(--color-text-secondary); margin-bottom:0.75rem;">已发现本地模型：<code>deepseek-ai/DeepSeek-V3</code></div>
+              <button class="btn btn-default btn-sm btn-reprobe" data-runtime="vLLM">🔄 重新探测</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 子 Tab 3: 4 款内置离线小模型 -->
+        <div id="engine-tab-models" class="engine-subtab-content" style="display:none;">
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1rem;">
+            <!-- 模型 1: Qwen2.5-0.5B -->
+            <div class="card" style="background:var(--color-bg-panel); display:flex; flex-direction:column; justify-content:space-between; gap:0.75rem;">
+              <div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <strong>Qwen2.5-0.5B-Instruct</strong>
+                  <span class="badge badge-success">已就绪 (READY)</span>
+                </div>
+                <div style="font-size:var(--font-size-xs); color:var(--color-text-muted); margin-top:0.25rem;">参数: 0.5B | 体积: ~390 MB | CPU 速度: 35~60 tok/s</div>
+                <p style="font-size:var(--font-size-xs); color:var(--color-text-secondary); margin-top:0.4rem;">中英双语极快响应，适用于基础定义与原理快速问答。</p>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--color-border-subtle); padding-top:0.5rem;">
+                <span style="font-size:var(--font-size-xs); color:var(--color-success);">● 处于默认就绪态</span>
+                <button class="btn btn-default btn-sm" disabled>已启用</button>
+              </div>
+            </div>
+
+            <!-- 模型 2: Qwen2.5-1.5B -->
+            <div class="card" id="card-model-qwen15" style="background:var(--color-bg-panel); display:flex; flex-direction:column; justify-content:space-between; gap:0.75rem;">
+              <div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <strong>Qwen2.5-1.5B-Instruct</strong>
+                  <span class="badge badge-warning" id="badge-qwen15">未下载 (NOT_DOWNLOADED)</span>
+                </div>
+                <div style="font-size:var(--font-size-xs); color:var(--color-text-muted); margin-top:0.25rem;">参数: 1.5B | 体积: ~980 MB | CPU 速度: 18~30 tok/s</div>
+                <p style="font-size:var(--font-size-xs); color:var(--color-text-secondary); margin-top:0.4rem;">逻辑推理扎实，具备深入分析页面置换与死锁成因能力。</p>
+              </div>
+
+              <!-- 进度条 -->
+              <div id="prog-wrap-qwen15" style="display:none; flex-direction:column; gap:0.3rem;">
+                <div style="display:flex; justify-content:space-between; font-size:var(--font-size-xs); color:var(--color-text-muted);">
+                  <span id="prog-text-qwen15">下载进度: 0%</span>
+                  <span id="prog-speed-qwen15">14.2 MB/s</span>
+                </div>
+                <div style="background:var(--color-bg-canvas); height:6px; border-radius:var(--radius-full); overflow:hidden;">
+                  <div id="prog-bar-qwen15" style="background:var(--color-accent-primary); width:0%; height:100%; transition:width 0.1s linear;"></div>
+                </div>
+              </div>
+
+              <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--color-border-subtle); padding-top:0.5rem;">
+                <span style="font-size:var(--font-size-xs); color:var(--color-text-muted);">GGUF Q4_K_M</span>
+                <button id="btn-dl-qwen15" class="btn btn-primary btn-sm">⬇️ 开始下载</button>
+              </div>
+            </div>
+
+            <!-- 模型 3: DeepSeek-R1-Distill-Qwen-1.5B -->
+            <div class="card" id="card-model-deepseek" style="background:var(--color-bg-panel); display:flex; flex-direction:column; justify-content:space-between; gap:0.75rem;">
+              <div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <strong>DeepSeek-R1-1.5B (CoT)</strong>
+                  <span class="badge badge-warning" id="badge-deepseek">未下载 (NOT_DOWNLOADED)</span>
+                </div>
+                <div style="font-size:var(--font-size-xs); color:var(--color-text-muted); margin-top:0.25rem;">参数: 1.5B | 体积: ~1.1 GB | CPU 速度: 14~22 tok/s</div>
+                <p style="font-size:var(--font-size-xs); color:var(--color-text-secondary); margin-top:0.4rem;">具备思考链 (Chain-of-Thought) 推演，善于拆解复杂算法。</p>
+              </div>
+
+              <div id="prog-wrap-deepseek" style="display:none; flex-direction:column; gap:0.3rem;">
+                <div style="display:flex; justify-content:space-between; font-size:var(--font-size-xs); color:var(--color-text-muted);">
+                  <span id="prog-text-deepseek">下载进度: 0%</span>
+                  <span id="prog-speed-deepseek">18.5 MB/s</span>
+                </div>
+                <div style="background:var(--color-bg-canvas); height:6px; border-radius:var(--radius-full); overflow:hidden;">
+                  <div id="prog-bar-deepseek" style="background:var(--color-accent-primary); width:0%; height:100%; transition:width 0.1s linear;"></div>
+                </div>
+              </div>
+
+              <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--color-border-subtle); padding-top:0.5rem;">
+                <span style="font-size:var(--font-size-xs); color:var(--color-text-muted);">GGUF Q4_K_M</span>
+                <button id="btn-dl-deepseek" class="btn btn-primary btn-sm">⬇️ 开始下载</button>
+              </div>
+            </div>
+
+            <!-- 模型 4: Llama-3.2-1B -->
+            <div class="card" style="background:var(--color-bg-panel); display:flex; flex-direction:column; justify-content:space-between; gap:0.75rem;">
+              <div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <strong>Llama-3.2-1B-Instruct</strong>
+                  <span class="badge badge-warning">未下载 (NOT_DOWNLOADED)</span>
+                </div>
+                <div style="font-size:var(--font-size-xs); color:var(--color-text-muted); margin-top:0.25rem;">参数: 1.2B | 体积: ~800 MB | CPU 速度: 25~40 tok/s</div>
+                <p style="font-size:var(--font-size-xs); color:var(--color-text-secondary); margin-top:0.4rem;">纯英文/轻量指令微调，适合精炼极速响应。</p>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--color-border-subtle); padding-top:0.5rem;">
+                <span style="font-size:var(--font-size-xs); color:var(--color-text-muted);">GGUF Q4_K_M</span>
+                <button class="btn btn-default btn-sm" onclick="alert('展厅演示：请尝试点击左侧 Qwen2.5-1.5B 或 DeepSeek-R1 体验真实模拟下载动画！')">⬇️ 演示下载</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. 用户鉴权与游客模式 VIEW LOGIN -->
+    <section id="view-login" class="view-section">
+      <div class="showcase-disclaimer">
+        <div>
+          <strong>💡 展厅说明：</strong> 本登录模块展示前端表单校验与身份态切换。支持一键切换“游客模式”与“认证学员态”，登录成功后全局顶栏将实时联动展示学员信息。
+        </div>
+        <a href="https://github.com/yuhang234/os-visualizer" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
+          查看真实产品源码 ➔
+        </a>
+      </div>
+
+      <div style="max-width:520px; margin:0 auto; width:100%;">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <span id="auth-card-title">用户登录 (Sign In)</span>
+            </div>
+            <div style="display:flex; gap:0.4rem;">
+              <button id="auth-tab-login" class="btn btn-default btn-sm active">登录</button>
+              <button id="auth-tab-register" class="btn btn-default btn-sm">注册</button>
+            </div>
+          </div>
+
+          <form id="auth-form" onsubmit="return false;" style="display:flex; flex-direction:column; gap:1rem;">
+            <div>
+              <label style="font-size:var(--font-size-xs); font-weight:600; color:var(--color-text-secondary);">学号 / 用户名：</label>
+              <input type="text" id="auth-username" value="student_os" placeholder="请输入学号或用户名 (不少于3位)"
+                     style="width:100%; padding:0.5rem 0.75rem; border-radius:var(--radius-md); border:1px solid var(--color-border-default); background:var(--color-bg-canvas); color:var(--color-text-primary); font-size:var(--font-size-sm); margin-top:0.3rem;">
+              <div id="auth-user-hint" style="font-size:var(--font-size-xs); color:var(--color-text-muted); margin-top:0.2rem;">格式：支持字母、数字及下划线</div>
+            </div>
+
+            <div>
+              <label style="font-size:var(--font-size-xs); font-weight:600; color:var(--color-text-secondary);">账户密码：</label>
+              <div style="display:flex; gap:0.4rem; margin-top:0.3rem;">
+                <input type="password" id="auth-password" value="123456" placeholder="请输入密码 (不少于6位)"
+                       style="flex:1; padding:0.5rem 0.75rem; border-radius:var(--radius-md); border:1px solid var(--color-border-default); background:var(--color-bg-canvas); color:var(--color-text-primary); font-size:var(--font-size-sm);">
+                <button type="button" id="btn-toggle-pwd-mask" class="btn btn-default btn-sm">👁</button>
+              </div>
+              <div id="auth-pwd-hint" style="font-size:var(--font-size-xs); color:var(--color-text-muted); margin-top:0.2rem;">长度要求：不少于 6 位</div>
+            </div>
+
+            <div id="auth-feedback" style="display:none; padding:0.6rem; border-radius:var(--radius-md); font-size:var(--font-size-xs);"></div>
+
+            <button type="submit" id="btn-submit-auth" class="btn btn-primary" style="justify-content:center; padding:0.6rem;">🚀 立即登录</button>
+
+            <div style="text-align:center; position:relative; margin:0.5rem 0;">
+              <span style="font-size:var(--font-size-xs); color:var(--color-text-muted); background:var(--color-bg-surface); padding:0 0.5rem; position:relative; z-index:1;">或者是临时课堂体验？</span>
+              <div style="position:absolute; top:50%; left:0; right:0; height:1px; background:var(--color-border-subtle); z-index:0;"></div>
+            </div>
+
+            <button type="button" id="btn-guest-mode" class="btn btn-default" style="justify-content:center; padding:0.6rem;">⚡ 以游客身份快速体验 (免登录)</button>
+          </form>
+
+          <!-- 已登录信息卡片 (默认隐藏) -->
+          <div id="auth-profile-box" style="display:none; flex-direction:column; gap:1rem; padding-top:0.5rem;">
+            <div style="display:flex; align-items:center; gap:0.75rem;">
+              <div style="width:48px; height:48px; border-radius:50%; background:var(--color-accent-primary); display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:#fff;">🧑‍💻</div>
+              <div>
+                <div style="font-weight:700; font-size:1.1rem; color:var(--color-text-primary);">李华 同学</div>
+                <div style="font-size:var(--font-size-xs); color:var(--color-text-muted);">学号：20240901 · 计算机科学与技术学院</div>
+              </div>
+            </div>
+            <div style="background:var(--color-bg-subtle); border-radius:var(--radius-md); padding:0.75rem; font-size:var(--font-size-xs); color:var(--color-text-secondary); line-height:1.6;">
+              <div>✅ 账号状态：正式学员 (已通过鉴权校验)</div>
+              <div>✅ 实验漫游：算法矩阵与 AI 对话记录已自动同步至本地缓存</div>
+            </div>
+            <button id="btn-auth-logout" class="btn btn-danger btn-sm" style="align-self:flex-start;">退出登录 (切换为游客)</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. Web Audio 原生音效反馈 VIEW AUDIO -->
+    <section id="view-audio" class="view-section">
+      <div class="showcase-disclaimer">
+        <div>
+          <strong>💡 展厅说明：</strong> 本系统完全使用 HTML5 <code>AudioContext</code> 程序化合成正弦波、三角波与锯齿波（零音频外部文件），为页面置换命中/缺页、银行家死锁警报提供沉浸感声效。
+        </div>
+        <a href="https://github.com/yuhang234/os-visualizer" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
+          查看真实产品源码 ➔
+        </a>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🔊 Web Audio 程序化声音合成实验室</div>
+          <div style="display:flex; align-items:center; gap:1rem;">
+            <div style="display:flex; align-items:center; gap:0.4rem;">
+              <span style="font-size:var(--font-size-xs); color:var(--color-text-muted);">全局主音量：</span>
+              <input type="range" id="audio-volume-slider" min="0" max="1" step="0.05" value="0.8" style="accent-color:var(--color-accent-primary); cursor:pointer;">
+              <span id="audio-volume-val" style="font-size:var(--font-size-xs); font-family:var(--font-mono); min-width:32px;">80%</span>
+            </div>
+          </div>
+        </div>
+
+        <p style="font-size:var(--font-size-sm); color:var(--color-text-secondary); margin-bottom:1rem;">
+          点击下方事件卡片，即可由浏览器音频振荡器直接合成对应波形与声学特征：
+        </p>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:1rem;">
+          <!-- 命中音效 -->
+          <div class="card" style="background:var(--color-bg-panel); cursor:pointer;" onclick="synth.playTone('HIT')">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+              <strong style="color:var(--color-success);">TONE_HIT (页面命中)</strong>
+              <span class="badge badge-success">正弦波</span>
+            </div>
+            <div style="font-size:var(--font-size-xs); color:var(--color-text-muted);">频率：587.33Hz (D5) ➔ 880Hz (A5) | 120ms</div>
+            <p style="font-size:var(--font-size-xs); color:var(--color-text-secondary); margin-top:0.35rem;">清脆、明快的“叮咚”确认感。</p>
+            <button class="btn btn-default btn-sm" style="margin-top:0.75rem; width:100%; justify-content:center;">▶ 试听命中音效</button>
+          </div>
+
+          <!-- 缺页音效 -->
+          <div class="card" style="background:var(--color-bg-panel); cursor:pointer;" onclick="synth.playTone('MISS')">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+              <strong style="color:var(--color-danger);">TONE_MISS (缺页淘汰)</strong>
+              <span class="badge badge-danger">三角波+低通</span>
+            </div>
+            <div style="font-size:var(--font-size-xs); color:var(--color-text-muted);">频率：220Hz (A3) ➔ 110Hz (A2) | 200ms</div>
+            <p style="font-size:var(--font-size-xs); color:var(--color-text-secondary); margin-top:0.35rem;">沉闷短促的提示感，柔和不刺耳。</p>
+            <button class="btn btn-default btn-sm" style="margin-top:0.75rem; width:100%; justify-content:center;">▶ 试听缺页音效</button>
+          </div>
+
+          <!-- 单步推进音效 -->
+          <div class="card" style="background:var(--color-bg-panel); cursor:pointer;" onclick="synth.playTone('STEP')">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+              <strong style="color:var(--color-accent-primary);">TONE_STEP (单步推进)</strong>
+              <span class="badge badge-primary">短正弦脉冲</span>
+            </div>
+            <div style="font-size:var(--font-size-xs); color:var(--color-text-muted);">频率：1200Hz 短脉冲 | 30ms</div>
+            <p style="font-size:var(--font-size-xs); color:var(--color-text-secondary); margin-top:0.35rem;">类似机械按键的触觉反馈咔哒声。</p>
+            <button class="btn btn-default btn-sm" style="margin-top:0.75rem; width:100%; justify-content:center;">▶ 试听单步音效</button>
+          </div>
+
+          <!-- 安全和弦音效 -->
+          <div class="card" style="background:var(--color-bg-panel); cursor:pointer;" onclick="synth.playTone('SAFE')">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+              <strong style="color:var(--color-success);">TONE_SAFE (银行家安全序列)</strong>
+              <span class="badge badge-success">双音和弦</span>
+            </div>
+            <div style="font-size:var(--font-size-xs); color:var(--color-text-muted);">频率：523.25Hz (C5) + 659.25Hz (E5) | 350ms</div>
+            <p style="font-size:var(--font-size-xs); color:var(--color-text-secondary); margin-top:0.35rem;">成功与解脱的和谐双音和弦。</p>
+            <button class="btn btn-default btn-sm" style="margin-top:0.75rem; width:100%; justify-content:center;">▶ 试听安全和弦</button>
+          </div>
+
+          <!-- 死锁警报音效 -->
+          <div class="card" style="background:var(--color-bg-panel); cursor:pointer;" onclick="synth.playTone('DEADLOCK')">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+              <strong style="color:var(--color-danger);">TONE_DEADLOCK (死锁/拒绝)</strong>
+              <span class="badge badge-danger">锯齿震颤波</span>
+            </div>
+            <div style="font-size:var(--font-size-xs); color:var(--color-text-muted);">频率：180Hz (F3) ➔ 150Hz (D3) 震颤 | 400ms</div>
+            <p style="font-size:var(--font-size-xs); color:var(--color-text-secondary); margin-top:0.35rem;">警示性低音蜂鸣，提示死锁风险与回滚。</p>
+            <button class="btn btn-default btn-sm" style="margin-top:0.75rem; width:100%; justify-content:center;">▶ 试听死锁警报</button>
+          </div>
+
+          <!-- 线程切换音效 -->
+          <div class="card" style="background:var(--color-bg-panel); cursor:pointer;" onclick="synth.playTone('SWITCH')">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+              <strong style="color:var(--color-info);">TONE_SWITCH (线程调度滑音)</strong>
+              <span class="badge badge-info">滑音正弦</span>
+            </div>
+            <div style="font-size:var(--font-size-xs); color:var(--color-text-muted);">频率：400Hz ➔ 600Hz 滑音 | 80ms</div>
+            <p style="font-size:var(--font-size-xs); color:var(--color-text-secondary); margin-top:0.35rem;">表示线程阻塞态与就绪唤醒的流转感。</p>
+            <button class="btn btn-default btn-sm" style="margin-top:0.75rem; width:100%; justify-content:center;">▶ 试听切换滑音</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. 全局运行日志控制台 VIEW CONSOLE -->
+    <section id="view-console" class="view-section">
+      <div class="showcase-disclaimer">
+        <div>
+          <strong>💡 展厅说明：</strong> 本控制台审计展厅内发生的所有模拟操作（包含算法重算、单步步进、死锁判定、AI 问答与音效触发），并支持按日志级别过滤。
+        </div>
+        <a href="https://github.com/yuhang234/os-visualizer" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
+          查看真实产品源码 ➔
+        </a>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span>📜 全局运行审计日志 (Console Execution Log)</span>
+            <span class="badge badge-primary" id="log-count-badge">0 条日志</span>
+          </div>
+
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+            <button class="btn btn-default btn-sm active log-filter-btn" data-filter="ALL">全部</button>
+            <button class="btn btn-default btn-sm log-filter-btn" data-filter="PAGE">页面置换</button>
+            <button class="btn btn-default btn-sm log-filter-btn" data-filter="BANKER">银行家</button>
+            <button class="btn btn-default btn-sm log-filter-btn" data-filter="THREAD">多线程</button>
+            <button class="btn btn-default btn-sm log-filter-btn" data-filter="AI">AI 引擎</button>
+            <button id="btn-clear-logs" class="btn btn-danger btn-sm">🗑️ 清空日志</button>
+          </div>
+        </div>
+
+        <div class="terminal-console" id="terminal-console">
+          <!-- 动态日志行 -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+
+// =============================================================================
+// os-visualizer 产品静态展厅交互核心引擎 (Pure Client-side, Zero Network Calls)
+// =============================================================================
+
+// 1. Web Audio 程序化声音合成器 (per docs/design-spec.md Section 12)
+class SoundSynthesizer {
+  constructor() {
+    this.ctx = null;
+    this.volume = 0.8;
+    this.isMuted = false;
+  }
+
+  init() {
+    if (!this.ctx && (window.AudioContext || window.webkitAudioContext)) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      this.ctx = new AudioCtx();
+    }
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+  }
+
+  playTone(type) {
+    if (this.isMuted) return;
+    try {
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+
+      if (type === 'HIT') {
+        // TONE_HIT: 正弦波 587.33 (D5) ➔ 880 (A5), 120ms
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
+        gain.gain.setValueAtTime(this.volume * 0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.12);
+        Logger.log('AUDIO', '播放音效: TONE_HIT (正弦波 587Hz->880Hz)');
+      } else if (type === 'MISS') {
+        // TONE_MISS: 三角波 220 (A3) ➔ 110 (A2), 200ms
+        const osc = this.ctx.createOscillator();
+        const filter = this.ctx.createBiquadFilter();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(800, now);
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.exponentialRampToValueAtTime(110, now + 0.2);
+        gain.gain.setValueAtTime(this.volume * 0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.2);
+        Logger.log('AUDIO', '播放音效: TONE_MISS (三角波 220Hz->110Hz)');
+      } else if (type === 'STEP') {
+        // TONE_STEP: 1200Hz 短脉冲, 30ms
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1200, now);
+        gain.gain.setValueAtTime(this.volume * 0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.03);
+      } else if (type === 'SAFE') {
+        // TONE_SAFE: 双音和弦 523.25 (C5) + 659.25 (E5), 350ms
+        [523.25, 659.25].forEach(freq => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now);
+          gain.gain.setValueAtTime(this.volume * 0.25, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.35);
+        });
+        Logger.log('AUDIO', '播放音效: TONE_SAFE (双音和弦 C5+E5)');
+      } else if (type === 'DEADLOCK') {
+        // TONE_DEADLOCK: 锯齿波 180 (F3) ➔ 150 (D3) 震颤, 400ms
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(180, now);
+        osc.frequency.linearRampToValueAtTime(150, now + 0.4);
+        gain.gain.setValueAtTime(this.volume * 0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.4);
+        Logger.log('AUDIO', '播放音效: TONE_DEADLOCK (锯齿波 180Hz->150Hz 震颤)');
+      } else if (type === 'SWITCH') {
+        // TONE_SWITCH: 正弦滑音 400 ➔ 600, 80ms
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(600, now + 0.08);
+        gain.gain.setValueAtTime(this.volume * 0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.08);
+      }
+    } catch (e) {
+      console.warn("Audio Context init or play skipped:", e);
+    }
+  }
+}
+const synth = new SoundSynthesizer();
+
+// 2. 全局审计日志记录器 (Logger)
+const Logger = {
+  logs: [],
+  maxLogs: 200,
+  filter: 'ALL',
+
+  log(tag, msg) {
+    const time = new Date().toTimeString().split(' ')[0];
+    const item = { time, tag, msg, id: Date.now() + Math.random() };
+    this.logs.push(item);
+    if (this.logs.length > this.maxLogs) this.logs.shift();
+    this.render();
+  },
+
+  render() {
+    const consoleEl = document.getElementById('terminal-console');
+    const badgeEl = document.getElementById('log-count-badge');
+    if (!consoleEl) return;
+
+    if (badgeEl) badgeEl.textContent = `${this.logs.length} 条日志`;
+
+    const filtered = this.logs.filter(item => {
+      if (this.filter === 'ALL') return true;
+      if (this.filter === 'PAGE') return ['PAGE', 'HIT', 'MISS'].includes(item.tag);
+      if (this.filter === 'BANKER') return ['BANKER', 'SAFE', 'WARN', 'ERROR'].includes(item.tag);
+      if (this.filter === 'THREAD') return ['THREAD', 'WARN'].includes(item.tag);
+      if (this.filter === 'AI') return ['AI', 'SUCCESS'].includes(item.tag);
+      return true;
+    });
+
+    consoleEl.innerHTML = '';
+    filtered.forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'log-line';
+      row.innerHTML = `<span class="log-time">[${item.time}]</span> <span class="log-tag ${item.tag}">[${item.tag}]</span> <span class="log-msg">${item.msg}</span>`;
+      consoleEl.appendChild(row);
+    });
+
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+  },
+
+  clear() {
+    this.logs = [];
+    this.render();
+  }
+};
+
+// 3. 全局双主题管理 (Dark / Light / System, 持久化至 localStorage)
+const ThemeManager = {
+  currentMode: localStorage.getItem('os_theme') || 'dark',
+
+  init() {
+    this.applyTheme(this.currentMode);
+
+    // 监听系统主题变化
+    if (window.matchMedia) {
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        if (this.currentMode === 'system') {
+          this.applyTheme('system');
+        }
+      });
+    }
+
+    const cycleBtn = document.getElementById('btn-theme-cycle');
+    if (cycleBtn) {
+      cycleBtn.addEventListener('click', () => {
+        const next = (this.currentMode === 'dark') ? 'light' : (this.currentMode === 'light' ? 'system' : 'dark');
+        this.applyTheme(next);
+      });
+    }
+  },
+
+  applyTheme(mode) {
+    this.currentMode = mode;
+    localStorage.setItem('os_theme', mode);
+
+    let effectiveTheme = mode;
+    if (mode === 'system') {
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      effectiveTheme = prefersDark ? 'dark' : 'light';
+    }
+
+    const iconEl = document.getElementById('theme-btn-icon');
+    const textEl = document.getElementById('theme-btn-text');
+
+    if (effectiveTheme === 'light') {
+      document.body.classList.add('light-theme');
+    } else {
+      document.body.classList.remove('light-theme');
+    }
+
+    if (mode === 'system') {
+      if (iconEl) iconEl.textContent = '🖥️';
+      if (textEl) textEl.textContent = '主题: 跟随系统';
+    } else if (mode === 'light') {
+      if (iconEl) iconEl.textContent = '☀️';
+      if (textEl) textEl.textContent = '主题: 浅色模式';
+    } else {
+      if (iconEl) iconEl.textContent = '🌙';
+      if (textEl) textEl.textContent = '主题: 深色模式';
+    }
+
+    synth.playTone('STEP');
+    Logger.log('INFO', `主题已切换: ${mode} (生效模式: ${effectiveTheme})`);
+  }
+};
+
+// 4. 页面置换仿真重算引擎 (FIFO / LRU / OPT / CLOCK)
+const PageRepEngine = {
+  algo: 'FIFO',
+  capacity: 3,
+  pages: [7, 0, 1, 2, 0, 3, 0, 4, 2, 3, 0, 3, 2, 1, 2, 0, 1, 7, 0, 1],
+  trace: [],
+  currentStep: 0,
+  isPlaying: false,
+  timer: null,
+
+  computeTrace() {
+    const { pages, capacity, algo } = this;
+    const frames = Array(capacity).fill(null);
+    const useBits = Array(capacity).fill(0);
+    const loadedAt = Array(capacity).fill(-1);
+    const lastUsed = Array(capacity).fill(-1);
+    let hand = 0;
+    let hits = 0;
+    let misses = 0;
+    const trace = [];
+
+    for (let i = 0; i < pages.length; i++) {
+      const page = pages[i];
+      const existingIdx = frames.indexOf(page);
+      let hit = false;
+      let evictedPage = null;
+      let evictedFrame = null;
+      let rationale = "";
+
+      if (existingIdx !== -1) {
+        hit = true;
+        hits++;
+        lastUsed[existingIdx] = i;
+        useBits[existingIdx] = 1;
+        rationale = `页面 ${page} 已驻留在物理页框 ${existingIdx} 中，命中成功，更新最近访问时间与使用位。`;
+      } else {
+        misses++;
+        const emptyIdx = frames.indexOf(null);
+        if (emptyIdx !== -1) {
+          frames[emptyIdx] = page;
+          loadedAt[emptyIdx] = i;
+          lastUsed[emptyIdx] = i;
+          useBits[emptyIdx] = 1;
+          rationale = `发生缺页。物理内存尚有空闲槽位，将页面 ${page} 调入页框 ${emptyIdx}。`;
+        } else {
+          let targetFrame = 0;
+          if (algo === 'FIFO') {
+            let minLoad = Infinity;
+            for (let f = 0; f < capacity; f++) {
+              if (loadedAt[f] < minLoad) { minLoad = loadedAt[f]; targetFrame = f; }
+            }
+            evictedPage = frames[targetFrame];
+            rationale = `发生缺页且页框已满。依据 FIFO 策略，页框 ${targetFrame} 的页面 ${evictedPage} 最早进入内存 (第 ${loadedAt[targetFrame] + 1} 步)，故淘汰该页面。`;
+          } else if (algo === 'LRU') {
+            let minUsed = Infinity;
+            for (let f = 0; f < capacity; f++) {
+              if (lastUsed[f] < minUsed) { minUsed = lastUsed[f]; targetFrame = f; }
+            }
+            evictedPage = frames[targetFrame];
+            rationale = `发生缺页且页框已满。依据 LRU 策略，页框 ${targetFrame} 的页面 ${evictedPage} 最近一次访问距今最远 (第 ${lastUsed[targetFrame] + 1} 步)，故予以淘汰。`;
+          } else if (algo === 'OPT') {
+            let maxNext = -1;
+            for (let f = 0; f < capacity; f++) {
+              let nextUse = Infinity;
+              for (let next = i + 1; next < pages.length; next++) {
+                if (pages[next] === frames[f]) { nextUse = next; break; }
+              }
+              if (nextUse > maxNext) { maxNext = nextUse; targetFrame = f; }
+            }
+            evictedPage = frames[targetFrame];
+            const nextStr = (maxNext === Infinity) ? '未来永不再访问' : `直到第 ${maxNext + 1} 步才会被访问`;
+            rationale = `发生缺页且页框已满。依据 OPT 最佳置换，页框 ${targetFrame} 的页面 ${evictedPage} ${nextStr}，选择淘汰可获得最优缺页率。`;
+          } else if (algo === 'CLOCK') {
+            let inspected = 0;
+            while (inspected < capacity * 2) {
+              if (useBits[hand] === 0) {
+                targetFrame = hand;
+                evictedPage = frames[targetFrame];
+                hand = (hand + 1) % capacity;
+                break;
+              } else {
+                useBits[hand] = 0;
+                hand = (hand + 1) % capacity;
+                inspected++;
+              }
+            }
+            rationale = `发生缺页且页框已满。CLOCK 巡查指针发现页框 ${targetFrame} 的使用位为 0，淘汰旧页面 ${evictedPage}，并将巡查指针步进至页框 ${hand}。`;
+          }
+
+          evictedFrame = targetFrame;
+          frames[targetFrame] = page;
+          loadedAt[targetFrame] = i;
+          lastUsed[targetFrame] = i;
+          useBits[targetFrame] = 1;
+        }
+      }
+
+      trace.push({
+        stepIndex: i,
+        page,
+        hit,
+        frames: [...frames],
+        evictedPage,
+        evictedFrame,
+        clockHand: hand,
+        useBits: [...useBits],
+        hits,
+        misses,
+        total: i + 1,
+        faultRate: ((misses / (i + 1)) * 100).toFixed(1),
+        rationale
+      });
+    }
+
+    this.trace = trace;
+    Logger.log('PAGE', `重新计算轨迹完成: 算法=${algo}, 页框数=${capacity}, 参考串长度=${pages.length}, 总缺页=${misses}, 缺页率=${((misses/pages.length)*100).toFixed(1)}%`);
+  },
+
+  renderStep(idx) {
+    if (idx < 0 || idx >= this.trace.length) return;
+    this.currentStep = idx;
+    const step = this.trace[idx];
+
+    // 更新步数徽章与命中状态
+    const stepBadge = document.getElementById('rep-step-badge');
+    const statusBadge = document.getElementById('rep-status-badge');
+    if (stepBadge) stepBadge.textContent = `步骤 ${idx + 1} / ${this.trace.length} (访问页面 ${step.page})`;
+
+    if (statusBadge) {
+      if (step.hit) {
+        statusBadge.className = 'badge badge-success';
+        statusBadge.textContent = '✅ 页面命中 (Hit)';
+      } else {
+        statusBadge.className = 'badge badge-danger';
+        statusBadge.textContent = '❌ 发生缺页 (Miss)';
+      }
+    }
+
+    // 更新参考串行列表
+    const streamContainer = document.getElementById('rep-stream-list');
+    if (streamContainer) {
+      streamContainer.innerHTML = '';
+      this.pages.forEach((p, i) => {
+        const div = document.createElement('div');
+        div.className = 'rep-stream-item' + (i === idx ? ' current' : (i < idx ? ' processed' : ''));
+        div.innerHTML = `<span class="step-idx">#${i+1}</span>${p}`;
+        div.onclick = () => { PageRepEngine.pause(); PageRepEngine.renderStep(i); };
+        streamContainer.appendChild(div);
+      });
+      // 保持当前 step 居中滚动
+      const curEl = streamContainer.children[idx];
+      if (curEl) curEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+
+    // 更新物理页框插槽
+    const framesGrid = document.getElementById('rep-frames-grid');
+    if (framesGrid) {
+      framesGrid.innerHTML = '';
+      step.frames.forEach((val, fIdx) => {
+        const card = document.createElement('div');
+        let cardClass = 'frame-slot-card';
+        if (step.hit && val === step.page) cardClass += ' hit';
+        if (!step.hit && val === step.page) cardClass += ' miss';
+        card.className = cardClass;
+
+        let clockInfo = '';
+        if (this.algo === 'CLOCK') {
+          const isPointer = (step.clockHand === fIdx);
+          const uBit = step.useBits[fIdx];
+          clockInfo = `<div style="font-size:0.7rem; color:var(--color-accent-primary); margin-top:0.25rem;">使用位: [${uBit}] ${isPointer ? '👈 指针' : ''}</div>`;
+        }
+
+        card.innerHTML = `
+          <div style="font-size:0.75rem; color:var(--color-text-muted);">物理页框 ${fIdx}</div>
+          <div class="frame-slot-val">${val !== null ? val : '-'}</div>
+          <div style="font-size:0.7rem; color:var(--color-text-secondary);">${val !== null ? '已装载' : '空闲'}</div>
+          ${clockInfo}
+        `;
+        framesGrid.appendChild(card);
+      });
+    }
+
+    // 更新指标面板
+    const totalEl = document.getElementById('metric-total');
+    const faultsEl = document.getElementById('metric-faults');
+    const hitsEl = document.getElementById('metric-hits');
+    const rateEl = document.getElementById('metric-fault-rate');
+    const gaugeText = document.getElementById('gauge-percent-text');
+    const gaugeCircle = document.getElementById('rep-gauge-circle');
+
+    if (totalEl) totalEl.textContent = step.total;
+    if (faultsEl) faultsEl.textContent = step.misses;
+    if (hitsEl) hitsEl.textContent = step.hits;
+    if (rateEl) rateEl.textContent = `${step.faultRate}%`;
+    if (gaugeText) gaugeText.textContent = `${step.faultRate}%`;
+
+    if (gaugeCircle) {
+      const circumference = 264;
+      const offset = circumference - (parseFloat(step.faultRate) / 100) * circumference;
+      gaugeCircle.style.strokeDashoffset = offset;
+    }
+
+    // 更新置换原理解释
+    const rationaleEl = document.getElementById('rep-rationale-text');
+    if (rationaleEl) rationaleEl.textContent = step.rationale;
+
+    // 更新播放条 Slider 与文本
+    const slider = document.getElementById('rep-timeline-slider');
+    const timeText = document.getElementById('rep-timeline-text');
+    if (slider) slider.value = idx;
+    if (timeText) timeText.textContent = `${idx + 1}/${this.trace.length}`;
+
+    // 播放对应音效
+    synth.playTone(step.hit ? 'HIT' : 'MISS');
+  },
+
+  play() {
+    this.isPlaying = true;
+    const playBtn = document.getElementById('rep-btn-play');
+    if (playBtn) playBtn.textContent = '⏸ 暂停';
+    const speed = parseInt(document.getElementById('rep-speed-select').value) || 1000;
+    this.timer = setInterval(() => {
+      if (this.currentStep < this.trace.length - 1) {
+        this.renderStep(this.currentStep + 1);
+      } else {
+        this.pause();
+      }
+    }, speed);
+  },
+
+  pause() {
+    this.isPlaying = false;
+    const playBtn = document.getElementById('rep-btn-play');
+    if (playBtn) playBtn.textContent = '▶ 播放';
+    if (this.timer) { clearInterval(this.timer); this.timer = null; }
+  },
+
+  init() {
+    this.computeTrace();
+    this.renderStep(0);
+
+    // 绑定事件
+    document.getElementById('rep-btn-first').onclick = () => { this.pause(); this.renderStep(0); };
+    document.getElementById('rep-btn-prev').onclick = () => { this.pause(); if (this.currentStep > 0) this.renderStep(this.currentStep - 1); };
+    document.getElementById('rep-btn-next').onclick = () => { this.pause(); if (this.currentStep < this.trace.length - 1) this.renderStep(this.currentStep + 1); };
+    document.getElementById('rep-btn-last').onclick = () => { this.pause(); this.renderStep(this.trace.length - 1); };
+    document.getElementById('rep-btn-play').onclick = () => { if (this.isPlaying) this.pause(); else this.play(); };
+
+    document.getElementById('rep-timeline-slider').oninput = (e) => {
+      this.pause();
+      this.renderStep(parseInt(e.target.value));
+    };
+
+    document.getElementById('rep-speed-select').onchange = () => {
+      if (this.isPlaying) { this.pause(); this.play(); }
+    };
+
+    document.querySelectorAll('input[name="rep-algo"]').forEach(r => {
+      r.onchange = (e) => {
+        this.algo = e.target.value;
+        const badge = document.getElementById('rep-algo-badge');
+        if (badge) badge.textContent = `${this.algo} 算法`;
+        this.pause();
+        this.computeTrace();
+        this.renderStep(0);
+      };
+    });
+
+    document.getElementById('rep-frames-count').onchange = (e) => {
+      this.capacity = parseInt(e.target.value);
+      this.pause();
+      this.computeTrace();
+      this.renderStep(0);
+    };
+
+    document.getElementById('rep-btn-recalc').onclick = () => {
+      const inputVal = document.getElementById('rep-ref-input').value;
+      const parsed = inputVal.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+      if (parsed.length >= 2) {
+        this.pages = parsed;
+        const slider = document.getElementById('rep-timeline-slider');
+        slider.max = parsed.length - 1;
+        this.pause();
+        this.computeTrace();
+        this.renderStep(0);
+      } else {
+        alert("请输入至少 2 个由逗号隔开的有效页面号！");
+      }
+    };
+
+    // 预设按钮
+    document.getElementById('rep-preset-textbook').onclick = () => {
+      document.getElementById('rep-ref-input').value = "7, 0, 1, 2, 0, 3, 0, 4, 2, 3, 0, 3, 2, 1, 2, 0, 1, 7, 0, 1";
+      document.getElementById('rep-btn-recalc').click();
+    };
+    document.getElementById('rep-preset-belady').onclick = () => {
+      document.getElementById('rep-ref-input').value = "1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5";
+      document.getElementById('rep-btn-recalc').click();
+    };
+    document.getElementById('rep-preset-random').onclick = () => {
+      const randArr = Array.from({ length: 18 }, () => Math.floor(Math.random() * 8));
+      document.getElementById('rep-ref-input').value = randArr.join(', ');
+      document.getElementById('rep-btn-recalc').click();
+    };
+  }
+};
+
+// 5. 银行家死锁规避仿真引擎 (Banker's Algorithm Engine)
+const BankerEngine = {
+  processes: ["P0", "P1", "P2", "P3", "P4"],
+  avail: [3, 3, 2],
+  max: [
+    [7, 5, 3],
+    [3, 2, 2],
+    [9, 0, 2],
+    [2, 2, 2],
+    [4, 3, 3]
+  ],
+  alloc: [
+    [0, 1, 0],
+    [2, 0, 0],
+    [3, 0, 2],
+    [2, 1, 1],
+    [0, 0, 2]
+  ],
+
+  getNeed() {
+    return this.max.map((mRow, i) => mRow.map((mVal, j) => mVal - this.alloc[i][j]));
+  },
+
+  renderMatrices() {
+    const need = this.getNeed();
+    const renderTable = (tbodyId, mat) => {
+      const el = document.getElementById(tbodyId);
+      if (!el) return;
+      el.innerHTML = '';
+      mat.forEach((row, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><strong>${this.processes[i]}</strong></td><td>${row[0]}</td><td>${row[1]}</td><td>${row[2]}</td>`;
+        el.appendChild(tr);
+      });
+    };
+
+    renderTable('banker-table-max', this.max);
+    renderTable('banker-table-alloc', this.alloc);
+    renderTable('banker-table-need', need);
+
+    const badge = document.getElementById('banker-avail-badge');
+    if (badge) badge.textContent = `Available: [ A:${this.avail[0]}, B:${this.avail[1]}, C:${this.avail[2]} ]`;
+  },
+
+  runSafetyCheck(onDone) {
+    const need = this.getNeed();
+    let work = [...this.avail];
+    let finish = Array(this.processes.length).fill(false);
+    let deductionSteps = [];
+
+    let count = 0;
+    while (count < this.processes.length) {
+      let found = false;
+      for (let i = 0; i < this.processes.length; i++) {
+        if (!finish[i]) {
+          // 条件 Need[i] <= Work
+          let canAlloc = true;
+          for (let j = 0; j < 3; j++) {
+            if (need[i][j] > work[j]) { canAlloc = false; break; }
+          }
+          if (canAlloc) {
+            const workBefore = [...work];
+            for (let j = 0; j < 3; j++) {
+              work[j] += this.alloc[i][j];
+            }
+            finish[i] = true;
+            found = true;
+            count++;
+            deductionSteps.push({
+              stepIdx: count,
+              pName: this.processes[i],
+              workBefore,
+              need: [...need[i]],
+              alloc: [...this.alloc[i]],
+              workAfter: [...work],
+              isSafe: true
+            });
+            break;
+          }
+        }
+      }
+      if (!found) break;
+    }
+
+    const isSystemSafe = (count === this.processes.length);
+    const tbody = document.getElementById('banker-table-deduction');
+    const safeSeqContainer = document.getElementById('banker-safe-sequence');
+    const statusBadge = document.getElementById('banker-status-badge');
+
+    if (tbody) tbody.innerHTML = '';
+    if (safeSeqContainer) safeSeqContainer.innerHTML = '';
+
+    if (statusBadge) {
+      statusBadge.className = isSystemSafe ? 'badge badge-success' : 'badge badge-danger';
+      statusBadge.textContent = isSystemSafe ? '推导演示中...' : '❌ 系统处于不安全状态';
+    }
+
+    // 动画呈现推导步骤
+    let sIdx = 0;
+    const interval = setInterval(() => {
+      if (sIdx < deductionSteps.length) {
+        const s = deductionSteps[sIdx];
+        const tr = document.createElement('tr');
+        tr.className = 'finish-true';
+        tr.innerHTML = `
+          <td>第 ${s.stepIdx} 步</td>
+          <td><strong>${s.pName}</strong></td>
+          <td>(${s.workBefore.join(', ')})</td>
+          <td>(${s.need.join(', ')})</td>
+          <td><span class="badge badge-success">满足 (≤ Work)</span></td>
+          <td>(${s.alloc.join(', ')})</td>
+          <td>(${s.workAfter.join(', ')})</td>
+          <td><span class="badge badge-success">TRUE</span></td>
+        `;
+        if (tbody) tbody.appendChild(tr);
+
+        // 追加安全序列气泡
+        if (safeSeqContainer) {
+          const badge = document.createElement('span');
+          badge.className = 'badge badge-primary';
+          badge.style.fontSize = '0.85rem';
+          badge.textContent = s.pName;
+          safeSeqContainer.appendChild(badge);
+          if (sIdx < deductionSteps.length - 1) {
+            const arrow = document.createElement('span');
+            arrow.textContent = ' ➔ ';
+            arrow.style.color = 'var(--color-accent-primary)';
+            safeSeqContainer.appendChild(arrow);
+          }
+        }
+
+        synth.playTone('STEP');
+        sIdx++;
+      } else {
+        clearInterval(interval);
+        if (statusBadge) {
+          statusBadge.textContent = isSystemSafe ? '✅ 安全状态 (已获安全序列)' : '❌ 不安全';
+        }
+        if (isSystemSafe) {
+          synth.playTone('SAFE');
+          Logger.log('SAFE', `银行家安全性检查通过: 安全序列 < ${deductionSteps.map(s => s.pName).join(' ➔ ')} >`);
+        } else {
+          synth.playTone('DEADLOCK');
+          Logger.log('WARN', '银行家安全性检查未找到完整安全序列，系统处于死锁风险态！');
+        }
+        if (onDone) onDone(isSystemSafe);
+      }
+    }, 380);
+  },
+
+  handleRequest(pIdx, req) {
+    const pName = this.processes[pIdx];
+    const need = this.getNeed();
+    const resBox = document.getElementById('banker-req-result-box');
+    if (!resBox) return;
+
+    resBox.style.display = 'block';
+
+    // 步骤 1: Request <= Need?
+    for (let j = 0; j < 3; j++) {
+      if (req[j] > need[pIdx][j]) {
+        resBox.style.background = 'var(--color-danger-bg)';
+        resBox.style.border = '1px solid var(--color-danger)';
+        resBox.style.color = 'var(--color-danger)';
+        resBox.innerHTML = `<strong>❌ 申请被拒绝 (超出 Need 需求上限)</strong><br>进程 ${pName} 申请资源 (${req.join(', ')}) 超过了其宣告的最大尚需需求 Need (${need[pIdx].join(', ')})！操作系统拒绝此次非法分配。`;
+        synth.playTone('DEADLOCK');
+        Logger.log('ERROR', `银行家判定: 进程 ${pName} 申请 (${req.join(',')}) 超出 Need，直接拒绝`);
+        return;
+      }
+    }
+
+    // 步骤 2: Request <= Available?
+    for (let j = 0; j < 3; j++) {
+      if (req[j] > this.avail[j]) {
+        resBox.style.background = 'var(--color-warning-bg)';
+        resBox.style.border = '1px solid var(--color-warning)';
+        resBox.style.color = 'var(--color-warning)';
+        resBox.innerHTML = `<strong>⚠️ 资源不足必须等待</strong><br>进程 ${pName} 申请资源 (${req.join(', ')}) 超过了当前可用量 Available (${this.avail.join(', ')})。系统尚无充足资源，进程必须阻塞等待。`;
+        synth.playTone('DEADLOCK');
+        Logger.log('WARN', `银行家判定: 进程 ${pName} 申请 (${req.join(',')}) 超过 Available，进程阻塞等待`);
+        return;
+      }
+    }
+
+    // 步骤 3: 试探性分配
+    const originalAvail = [...this.avail];
+    const originalAlloc = this.alloc.map(r => [...r]);
+
+    for (let j = 0; j < 3; j++) {
+      this.avail[j] -= req[j];
+      this.alloc[pIdx][j] += req[j];
+    }
+    this.renderMatrices();
+
+    // 运行安全性检查
+    this.runSafetyCheck((isSafe) => {
+      if (isSafe) {
+        resBox.style.background = 'var(--color-success-bg)';
+        resBox.style.border = '1px solid var(--color-success)';
+        resBox.style.color = 'var(--color-success)';
+        resBox.innerHTML = `<strong>✅ 申请获批并安全分配！</strong><br>试探分配后系统仍能找到安全序列，正式批准向进程 ${pName} 分配资源 (${req.join(', ')})，当前剩余可用 Available 为 (${this.avail.join(', ')})。`;
+        Logger.log('SAFE', `银行家判定: 进程 ${pName} 申请获批，系统保持安全`);
+      } else {
+        // 回滚试探分配
+        this.avail = originalAvail;
+        this.alloc = originalAlloc;
+        this.renderMatrices();
+
+        resBox.style.background = 'var(--color-danger-bg)';
+        resBox.style.border = '1px solid var(--color-danger)';
+        resBox.style.color = 'var(--color-danger)';
+        resBox.innerHTML = `<strong>❌ 拒绝分配并回滚！(存在死锁风险)</strong><br>试探分配后，剩余可用资源无法满足任何就绪进程的全部需求，系统将陷入死锁危险！操作系统立即触发<strong>回滚保护机制</strong>，撤销试探分配，进程 ${pName} 保持等待。`;
+        synth.playTone('DEADLOCK');
+        Logger.log('WARN', `银行家判定: 进程 ${pName} 申请导致不安全状态，已执行原子回滚！`);
+      }
+    });
+  },
+
+  reset() {
+    this.avail = [3, 3, 2];
+    this.alloc = [
+      [0, 1, 0],
+      [2, 0, 0],
+      [3, 0, 2],
+      [2, 1, 1],
+      [0, 0, 2]
+    ];
+    this.renderMatrices();
+    const resBox = document.getElementById('banker-req-result-box');
+    if (resBox) resBox.style.display = 'none';
+    const tbody = document.getElementById('banker-table-deduction');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="color:var(--color-text-muted); padding:1.5rem;">点击上方「运行安全性检查」按钮开始逐步动画推导</td></tr>';
+    const seq = document.getElementById('banker-safe-sequence');
+    if (seq) seq.innerHTML = '<span style="color:var(--color-text-muted); font-size:var(--font-size-sm);">尚未生成</span>';
+    const statusBadge = document.getElementById('banker-status-badge');
+    if (statusBadge) { statusBadge.className = 'badge'; statusBadge.textContent = '等待运行'; }
+  },
+
+  init() {
+    this.renderMatrices();
+
+    document.getElementById('banker-btn-safety').onclick = () => this.runSafetyCheck();
+    document.getElementById('banker-btn-reset').onclick = () => this.reset();
+
+    document.getElementById('banker-btn-submit-req').onclick = () => {
+      const pIdx = parseInt(document.getElementById('banker-req-p').value);
+      const req = [
+        parseInt(document.getElementById('banker-req-a').value) || 0,
+        parseInt(document.getElementById('banker-req-b').value) || 0,
+        parseInt(document.getElementById('banker-req-c').value) || 0
+      ];
+      this.handleRequest(pIdx, req);
+    };
+
+    document.getElementById('banker-demo-safe-req').onclick = () => {
+      document.getElementById('banker-req-p').value = "1";
+      document.getElementById('banker-req-a').value = "1";
+      document.getElementById('banker-req-b').value = "0";
+      document.getElementById('banker-req-c').value = "2";
+      this.handleRequest(1, [1, 0, 2]);
+    };
+
+    document.getElementById('banker-demo-deadlock-req').onclick = () => {
+      document.getElementById('banker-req-p').value = "4";
+      document.getElementById('banker-req-a').value = "3";
+      document.getElementById('banker-req-b').value = "3";
+      document.getElementById('banker-req-c').value = "0";
+      this.handleRequest(4, [3, 3, 0]);
+    };
+
+    document.getElementById('banker-demo-overneed-req').onclick = () => {
+      document.getElementById('banker-req-p').value = "0";
+      document.getElementById('banker-req-a').value = "8";
+      document.getElementById('banker-req-b').value = "0";
+      document.getElementById('banker-req-c').value = "0";
+      this.handleRequest(0, [8, 0, 0]);
+    };
+
+    document.getElementById('banker-preset-default').onclick = () => this.reset();
+    document.getElementById('banker-preset-tight').onclick = () => {
+      this.avail = [1, 1, 0];
+      this.renderMatrices();
+      Logger.log('BANKER', '载入资源紧俏临界案例: Available=[1, 1, 0]');
+    };
+  }
+};
+
+// 6. 多线程并发互斥引擎 (Threads & Mutex Engine)
+const ThreadsEngine = {
+  capacity: 5,
+  buffer: Array(5).fill(null),
+  inPtr: 0,
+  outPtr: 0,
+  mutex: 1,
+  empty: 5,
+  full: 0,
+  itemCounter: 101,
+  isAutoRunning: false,
+  autoTimer: null,
+
+  render() {
+    // 渲染槽位
+    const row = document.getElementById('buffer-slots-row');
+    if (row) {
+      row.innerHTML = '';
+      this.buffer.forEach((item, idx) => {
+        const slot = document.createElement('div');
+        slot.className = 'buffer-slot' + (item !== null ? ' occupied' : '');
+        slot.innerHTML = `
+          <div class="slot-idx">槽位 ${idx}</div>
+          <div class="item-id">${item ? item : '(空)'}</div>
+        `;
+        row.appendChild(slot);
+      });
+    }
+
+    const statText = document.getElementById('buffer-stat-text');
+    if (statText) {
+      const state = (this.full === 5) ? '【缓冲区已满】' : ((this.full === 0) ? '【缓冲区为空】' : '【正常流转】');
+      statText.textContent = `当前产品数：${this.full} / 5 ${state}`;
+    }
+
+    // 指针
+    const pIn = document.getElementById('ptr-in');
+    const pOut = document.getElementById('ptr-out');
+    if (pIn) pIn.textContent = `槽位 ${this.inPtr}`;
+    if (pOut) pOut.textContent = `槽位 ${this.outPtr}`;
+
+    // 原语
+    const mVal = document.getElementById('sem-mutex-val');
+    if (mVal) {
+      mVal.className = (this.mutex === 1) ? 'badge badge-success' : 'badge badge-warning';
+      mVal.textContent = (this.mutex === 1) ? '自由 (Value: 1)' : '锁定占用 (Value: 0)';
+    }
+
+    const eVal = document.getElementById('sem-empty-val');
+    const eBar = document.getElementById('sem-empty-bar');
+    if (eVal) eVal.textContent = `${this.empty} / 5`;
+    if (eBar) eBar.style.width = `${(this.empty / 5) * 100}%`;
+
+    const fVal = document.getElementById('sem-full-val');
+    const fBar = document.getElementById('sem-full-bar');
+    if (fVal) fVal.textContent = `${this.full} / 5`;
+    if (fBar) fBar.style.width = `${(this.full / 5) * 100}%`;
+  },
+
+  produce() {
+    if (this.empty === 0) {
+      // 缓冲区已满，生产者阻塞在 P(empty)
+      const pBadge = document.getElementById('thread-p1-badge');
+      const pDesc = document.getElementById('thread-p1-desc');
+      if (pBadge) { pBadge.className = 'badge badge-warning'; pBadge.textContent = '🟡 阻塞 BLOCKED'; }
+      if (pDesc) pDesc.textContent = '信号量 empty=0，缓冲区满，挂入等待队列';
+      synth.playTone('SWITCH');
+      Logger.log('WARN', '线程同步: 生产者 P1 申请 P(empty) 失败，缓冲区已满 (5/5)，线程阻塞！');
+      return false;
+    }
+
+    // 生产一个
+    const pBadge = document.getElementById('thread-p1-badge');
+    const pDesc = document.getElementById('thread-p1-desc');
+    if (pBadge) { pBadge.className = 'badge badge-success'; pBadge.textContent = '🟢 生产中 RUNNING'; }
+    if (pDesc) pDesc.textContent = `抢占互斥锁，写入槽位 ${this.inPtr}`;
+
+    const item = `#${this.itemCounter++}`;
+    this.buffer[this.inPtr] = item;
+    this.inPtr = (this.inPtr + 1) % this.capacity;
+    this.empty--;
+    this.full++;
+
+    // 唤醒可能阻塞的消费者
+    const cBadge = document.getElementById('thread-c1-badge');
+    const cDesc = document.getElementById('thread-c1-desc');
+    if (cBadge) { cBadge.className = 'badge badge-info'; cBadge.textContent = '就绪就绪'; }
+    if (cDesc) cDesc.textContent = '等待消费指令';
+
+    synth.playTone('HIT');
+    Logger.log('THREAD', `生产者 P1: 成功生产 ${item} 写入槽位，当前存货: ${this.full}/5`);
+    this.render();
+
+    setTimeout(() => {
+      if (pBadge) { pBadge.className = 'badge badge-info'; pBadge.textContent = '就绪休眠'; }
+      if (pDesc) pDesc.textContent = '等待生产指令';
+    }, 600);
+
+    return true;
+  },
+
+  consume() {
+    if (this.full === 0) {
+      // 缓冲区空，消费者阻塞在 P(full)
+      const cBadge = document.getElementById('thread-c1-badge');
+      const cDesc = document.getElementById('thread-c1-desc');
+      if (cBadge) { cBadge.className = 'badge badge-warning'; cBadge.textContent = '🟡 阻塞 BLOCKED'; }
+      if (cDesc) cDesc.textContent = '信号量 full=0，缓冲区空，挂入等待队列';
+      synth.playTone('SWITCH');
+      Logger.log('WARN', '线程同步: 消费者 C1 申请 P(full) 失败，缓冲区为空 (0/5)，线程阻塞！');
+      return false;
+    }
+
+    // 消费一个
+    const cBadge = document.getElementById('thread-c1-badge');
+    const cDesc = document.getElementById('thread-c1-desc');
+    if (cBadge) { cBadge.className = 'badge badge-success'; cBadge.textContent = '🟢 消费中 RUNNING'; }
+    if (cDesc) cDesc.textContent = `抢占互斥锁，从槽位 ${this.outPtr} 取出产品`;
+
+    const taken = this.buffer[this.outPtr];
+    this.buffer[this.outPtr] = null;
+    this.outPtr = (this.outPtr + 1) % this.capacity;
+    this.full--;
+    this.empty++;
+
+    // 唤醒可能阻塞的生产者
+    const pBadge = document.getElementById('thread-p1-badge');
+    const pDesc = document.getElementById('thread-p1-desc');
+    if (pBadge) { pBadge.className = 'badge badge-info'; pBadge.textContent = '就绪就绪'; }
+    if (pDesc) pDesc.textContent = '等待生产指令';
+
+    synth.playTone('STEP');
+    Logger.log('THREAD', `消费者 C1: 成功取出产品 ${taken}，当前剩余产品: ${this.full}/5`);
+    this.render();
+
+    setTimeout(() => {
+      if (cBadge) { cBadge.className = 'badge badge-info'; cBadge.textContent = '就绪休眠'; }
+      if (cDesc) cDesc.textContent = '等待消费指令';
+    }, 600);
+
+    return true;
+  },
+
+  reset() {
+    this.buffer = Array(5).fill(null);
+    this.inPtr = 0;
+    this.outPtr = 0;
+    this.mutex = 1;
+    this.empty = 5;
+    this.full = 0;
+    this.itemCounter = 101;
+    if (this.isAutoRunning) this.toggleAuto();
+    this.render();
+    Logger.log('THREAD', '缓冲区与同步原语已重置');
+  },
+
+  toggleAuto() {
+    const btn = document.getElementById('threads-btn-auto');
+    if (this.isAutoRunning) {
+      this.isAutoRunning = false;
+      if (btn) btn.textContent = '▶ 启动自动循环模拟';
+      if (this.autoTimer) { clearInterval(this.autoTimer); this.autoTimer = null; }
+    } else {
+      this.isAutoRunning = true;
+      if (btn) btn.textContent = '⏸ 暂停自动模拟';
+      this.autoTimer = setInterval(() => {
+        // 随机选择生产或消费
+        if (Math.random() > 0.45) {
+          this.produce();
+        } else {
+          this.consume();
+        }
+      }, 1100);
+    }
+  },
+
+  init() {
+    this.render();
+    document.getElementById('threads-btn-produce').onclick = () => this.produce();
+    document.getElementById('threads-btn-consume').onclick = () => this.consume();
+    document.getElementById('threads-btn-auto').onclick = () => this.toggleAuto();
+    document.getElementById('threads-btn-reset').onclick = () => this.reset();
+
+    // 快捷满/空
+    document.getElementById('threads-btn-fill').onclick = () => {
+      this.buffer = ['#901', '#902', '#903', '#904', '#905'];
+      this.inPtr = 0;
+      this.empty = 0;
+      this.full = 5;
+      this.render();
+      this.produce(); // 触发阻塞
+    };
+    document.getElementById('threads-btn-empty').onclick = () => {
+      this.buffer = [null, null, null, null, null];
+      this.empty = 5;
+      this.full = 0;
+      this.render();
+      this.consume(); // 触发阻塞
+    };
+  }
+};
+
+// 7. 多模型 AI 助教打字流引擎 (Simulated SSE Typewriter)
+const AIChatEngine = {
+  currentEngine: 'builtin',
+  isStreaming: false,
+  streamTimer: null,
+
+  knowledgeBase: {
+    belady: `### 📌 Belady 异常深入剖析
+
+**Belady 异常 (Belady's Anomaly)** 指的是：在使用某些页面置换算法时，为进程分配的物理页框数增加，缺页次数反而上升的逆向反常现象。
+
+1. **发生原因**：
+   - 最典型的算法是 **FIFO (先进先出)**。FIFO 只考虑页面进入内存的先后时序，未考虑后续访问概率或最近活跃度。
+   - 增加页框时，可能使得某些在未来即将被频繁访问的常驻热点页面在更早的时间点被淘汰出去。
+
+2. **为什么 LRU 和 OPT 绝不会发生 Belady 现象？**
+   - 因为 LRU、OPT 属于严谨的 **栈式算法 (Stack Algorithms)**。
+   - 数学性质证明：设 $S(n, t)$ 表示给进程分配 $n$ 个物理页框在时刻 $t$ 时驻留的页面集合，则栈式算法满足包含性单调定理：
+   $$S(n, t) \subseteq S(n+1, t)$$
+   - 即：任何时刻，容量为 $n$ 的页框中的所有页面，必然包含在容量为 $n+1$ 的页框集合之中。因此分配更多页框只可能使命中次数增加或持平，**在数学上绝不可能产生缺页率恶化**。`,
+
+    banker: `### 🛡️ 银行家算法中“不安全状态”与“死锁”的充要关系
+
+很多同学在考研与期末考中容易混淆这两者。请牢记核心定理：
+
+$$\\text{死锁状态} \\subset \\text{不安全状态} \\subset \\text{全部状态空间}$$
+
+1. **安全状态 (Safe State)**：
+   - 能够找到至少一条 **安全执行序列** $\\langle P_1, P_2, \\dots, P_n \\rangle$，使得每个进程在未来最大需求得到满足后释放资源，所有进程皆可顺利完成。安全状态下**绝无死锁**。
+
+2. **不安全状态 (Unsafe State)**：
+   - 找不到任何安全序列的状态。
+   - **核心结论**：系统处于不安全状态 **不一定** 已经发生死锁！
+   - 因为进程宣告的是“最大需求 (Max)”，但进程在实际运行时未必会在同一时刻申请全部最大配额。若进程提前释放部分资源，系统完全可能从不安全状态自行恢复到安全状态。
+   - 然而，不安全状态是死锁的**前兆与必要条件**。银行家算法的原则正是：**只要试探分配导致系统进入不安全状态，就断然拒绝分配并回滚！**`,
+
+    semaphore: `### 🧵 生产者-消费者中 P(mutex) 与 P(empty) 能否颠倒？
+
+**答案：绝对不能颠倒！如果颠倒，将导致致命的死锁 (Deadlock)！**
+
+以生产者为例，标准的正确顺序为：
+\`\`\`c
+P(empty); // 1. 先申请空闲槽位
+P(mutex); // 2. 再抢占临界区互斥锁
+insert_item();
+V(mutex);
+V(full);
+\`\`\`
+
+**如果错误颠倒为：**
+\`\`\`c
+P(mutex); // 先抢占了互斥锁！
+P(empty); // 再申请空闲槽位...
+\`\`\`
+
+**死锁推演时序：**
+1. 假设此时缓冲区恰好已满 ($empty = 0$)；
+2. 生产者到达，先执行 \`P(mutex)\`，成功获得互斥锁；
+3. 紧接着生产者执行 \`P(empty)\`，由于 $empty = 0$，生产者被强行阻塞挂起；
+4. 此时消费者试图执行消费释放空间，消费者到达执行 \`P(mutex)\`——发现互斥锁已被阻塞的生产者死死占据！
+5. **结果**：生产者抱着互斥锁在等消费者制造空位，而消费者因为拿不到互斥锁无法消费制造空位，系统瞬间陷入**相互永久死锁**！`,
+
+    clock: `### ⏱️ CLOCK (NRU) 置换算法的二次机会机制
+
+**CLOCK 算法** 又称最近未用算法 (Not Recently Used) 或时针巡检算法，是工程界（如 Linux 内核页置换）折中实现 LRU 的高性能标准方案。
+
+1. **数据结构**：
+   - 将全部物理页框组织为一个**逻辑环形链表**；
+   - 为每个页框设置一个硬件访问位/使用位 **Use Bit** (0 或 1)；
+   - 维护一个巡查指针 (Clock Hand)。
+
+2. **二次机会核心规则**：
+   - 当页面被进程访问时，硬件 MMU 自动将该页框的 \`Use Bit = 1\`；
+   - 当发生缺页置换时，指针自当前位置开始顺时针检查：
+     - 若当前页框的 \`Use Bit == 0\`：找到了近期未使用的淘汰受害者，将其置换，指针步进一位，算法结束；
+     - 若当前页框的 \`Use Bit == 1\`：**给予该页面第二次机会**，将其重置为 \`Use Bit = 0\`，暂不淘汰，指针继续巡查下一页框。
+3. **最坏情况循环**：
+   - 最坏情况下巡查指针转动一整圈，将沿途所有使用位从 1 清为 0，退化为普通 FIFO。该机制在接近 LRU 命中率的同时避免了频繁的时间戳维护开销。`
+  },
+
+  formatMarkdown(text) {
+    let html = text
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      // 恢复数学公式的标记
+      .replace(/\$\$(.+?)\$\$/g, '<div style="background:var(--color-bg-subtle); padding:0.5rem; border-radius:var(--radius-sm); font-family:var(--font-mono); color:var(--color-accent-primary); text-align:center; margin:0.5rem 0; font-weight:700;">$1</div>')
+      .replace(/\$(.+?)\$/g, '<code style="color:var(--color-accent-primary); background:var(--color-bg-subtle); padding:1px 4px; border-radius:3px;">$1</code>')
+      // 标题
+      .replace(/^### (.*$)/gim, '<h3 style="margin:0.5rem 0 0.3rem; font-size:1.05rem; color:var(--color-text-primary);">$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2 style="margin:0.6rem 0 0.4rem; font-size:1.15rem; color:var(--color-text-primary);">$1</h2>')
+      // 粗体
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      // 代码块
+      .replace(/```(.*?)\n([\s\S]*?)```/g, '<pre style="background:var(--terminal-bg); padding:0.6rem; border-radius:var(--radius-md); font-family:var(--font-mono); font-size:0.8rem; overflow-x:auto; margin:0.5rem 0; color:#38bdf8;"><code>$2</code></pre>')
+      // 行内代码
+      .replace(/`([^`]+)`/g, '<code style="background:var(--color-bg-subtle); padding:1px 5px; border-radius:3px; font-family:var(--font-mono); font-size:0.85em; color:var(--color-accent-primary);">$1</code>')
+      // 换行
+      .replace(/\n\n/g, '<br><br>')
+      .replace(/\n/g, '<br>');
+    return html;
+  },
+
+  sendUserMessage(text) {
+    if (!text || !text.trim() || this.isStreaming) return;
+    const cleanText = text.trim();
+
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+
+    // 1. 添加用户气泡
+    const userBubble = document.createElement('div');
+    userBubble.className = 'chat-bubble user';
+    userBubble.textContent = cleanText;
+    container.appendChild(userBubble);
+    container.scrollTop = container.scrollHeight;
+
+    // 清空输入框
+    const input = document.getElementById('chat-input');
+    if (input) input.value = '';
+
+    // 2. 匹配知识库或通用回答
+    let answerText = "";
+    const lower = cleanText.toLowerCase();
+    if (lower.includes('belady') || lower.includes('lru') || lower.includes('fifo') || lower.includes('异常')) {
+      answerText = this.knowledgeBase.belady;
+    } else if (lower.includes('银行家') || lower.includes('死锁') || lower.includes('安全状态') || lower.includes('不安全')) {
+      answerText = this.knowledgeBase.banker;
+    } else if (lower.includes('生产者') || lower.includes('消费者') || lower.includes('mutex') || lower.includes('empty') || lower.includes('颠倒')) {
+      answerText = this.knowledgeBase.semaphore;
+    } else if (lower.includes('clock') || lower.includes('时钟') || lower.includes('二次机会')) {
+      answerText = this.knowledgeBase.clock;
+    } else {
+      answerText = `### 💡 操作系统核心原理深度解答
+
+针对你提到的问题：“**${cleanText}**”，助教从操作系统内核体系为你拆解核心机制：
+
+1. **核心概念与设计权衡**：
+   - 现代操作系统核心围绕 **“虚拟化 (Virtualization)”** 与 **“并发互斥 (Concurrency)”** 两大支柱展开。
+   - 无论是虚拟内存的页表映射与缺页中断，还是 CPU 分时调度中的上下文切换开销，本质上都是在**时间效率**与**硬件成本**之间寻找帕累托最优解。
+
+2. **数学与时序模型**：
+   - 资源分配状态需满足守恒定理：
+   $$Work + \\sum_{i=1}^{n} Allocation_i = \\text{Total Resources}$$
+   - 在临界区保护中，必须始终满足**空闲让进、忙则等待、有限等待、让权等待**四大准则。
+
+欢迎点击上方提示词查看关于 Belady 异常、银行家死锁算法及信号量同步的详尽推导！`;
+    }
+
+    // 模型引擎前缀修饰
+    if (this.currentEngine === 'deepseek') {
+      answerText = `> [!NOTE]\n> **DeepSeek-Reasoner 推理链 (Thinking Chain)**：\n> 用户询问 "${cleanText}"。首先回顾 OS 教学大纲中的定义与数学证明，梳理临界条件，结合教材经典案例展开推导。\n\n` + answerText;
+    } else if (this.currentEngine === 'ollama') {
+      answerText = `> **[Ollama 本地私有化推理端点 · Qwen2.5]**\n\n` + answerText;
+    }
+
+    // 3. 启动流式打字输出
+    this.startStreaming(answerText);
+  },
+
+  startStreaming(fullText) {
+    this.isStreaming = true;
+    const container = document.getElementById('chat-messages');
+    const stopBtn = document.getElementById('chat-btn-stop');
+    if (stopBtn) stopBtn.style.display = 'inline-flex';
+
+    const aiBubble = document.createElement('div');
+    aiBubble.className = 'chat-bubble assistant';
+
+    const header = document.createElement('div');
+    header.style.fontWeight = '700';
+    header.style.color = 'var(--color-accent-primary)';
+    header.style.marginBottom = '0.35rem';
+    header.innerHTML = (this.currentEngine === 'deepseek') ? '⚡ DeepSeek-Reasoner' : ((this.currentEngine === 'ollama') ? '🦙 Ollama 本地模型' : '🤖 OS 教学助理');
+
+    const contentDiv = document.createElement('div');
+    contentDiv.innerHTML = '<span class="typing-cursor"></span>';
+
+    aiBubble.appendChild(header);
+    aiBubble.appendChild(contentDiv);
+    container.appendChild(aiBubble);
+    container.scrollTop = container.scrollHeight;
+
+    let charIdx = 0;
+    const chunkSize = 3;
+
+    this.streamTimer = setInterval(() => {
+      charIdx += chunkSize;
+      const partial = fullText.slice(0, charIdx);
+      contentDiv.innerHTML = AIChatEngine.formatMarkdown(partial) + '<span class="typing-cursor"></span>';
+      container.scrollTop = container.scrollHeight;
+
+      if (charIdx >= fullText.length) {
+        AIChatEngine.stopStreaming(contentDiv, fullText);
+      }
+    }, 25);
+
+    Logger.log('AI', `AI 助教流式回答生成中 (引擎: ${this.currentEngine})`);
+  },
+
+  stopStreaming(contentDiv, fullText) {
+    if (this.streamTimer) { clearInterval(this.streamTimer); this.streamTimer = null; }
+    this.isStreaming = false;
+    const stopBtn = document.getElementById('chat-btn-stop');
+    if (stopBtn) stopBtn.style.display = 'none';
+
+    if (contentDiv && fullText) {
+      contentDiv.innerHTML = AIChatEngine.formatMarkdown(fullText);
+    }
+    synth.playTone('STEP');
+    Logger.log('SUCCESS', 'AI 助教回答流式输出完毕 (零网络请求，本地合成)');
+  },
+
+  init() {
+    // 引擎切换
+    document.querySelectorAll('.chat-engine-btn').forEach(btn => {
+      btn.onclick = (e) => {
+        document.querySelectorAll('.chat-engine-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.currentEngine = btn.getAttribute('data-engine');
+        const badge = document.getElementById('chat-engine-badge');
+        if (badge) {
+          badge.textContent = (this.currentEngine === 'deepseek') ? 'DeepSeek-Reasoner' : ((this.currentEngine === 'ollama') ? 'Ollama 本地引擎' : '内置离线引擎');
+        }
+        synth.playTone('STEP');
+        Logger.log('AI', `切换 AI 对话模型标签: ${this.currentEngine}`);
+      };
+    });
+
+    // 快捷问题气泡
+    document.querySelectorAll('.chat-prompt-chip').forEach(btn => {
+      btn.onclick = () => {
+        const q = btn.getAttribute('data-q');
+        this.sendUserMessage(q);
+      };
+    });
+
+    // 发送与停止
+    const sendBtn = document.getElementById('chat-btn-send');
+    const input = document.getElementById('chat-input');
+    const stopBtn = document.getElementById('chat-btn-stop');
+
+    if (sendBtn && input) {
+      sendBtn.onclick = () => this.sendUserMessage(input.value);
+      input.onkeydown = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          this.sendUserMessage(input.value);
+        }
+      };
+    }
+
+    if (stopBtn) {
+      stopBtn.onclick = () => this.stopStreaming();
+    }
+  }
+};
+
+// 8. 模型引擎设置中心管理器 (Model Engine Settings Manager)
+const EngineSettingsManager = {
+  providers: [
+    { name: "OpenAI", base: "https://api.openai.com/v1", model: "gpt-4o, gpt-4o-mini", header: "Authorization: Bearer <KEY>" },
+    { name: "Anthropic Claude", base: "https://api.anthropic.com/v1", model: "claude-3-5-sonnet-20241022", header: "x-api-key: <KEY>" },
+    { name: "Google Gemini", base: "https://generativelanguage.googleapis.com/v1beta/openai/", model: "gemini-1.5-flash, gemini-2.0-flash", header: "Authorization: Bearer <KEY>" },
+    { name: "DeepSeek", base: "https://api.deepseek.com/v1", model: "deepseek-chat, deepseek-reasoner", header: "Authorization: Bearer <KEY>" },
+    { name: "阿里云百炼 (DashScope)", base: "https://dashscope.aliyuncs.com/compatible-mode/v1", model: "qwen-plus, qwen-turbo", header: "Authorization: Bearer <KEY>" },
+    { name: "火山方舟 (豆包 Doubao)", base: "https://ark.cn-beijing.volces.com/api/v3", model: "ep-20250101-doubao-pro", header: "Authorization: Bearer <KEY>" },
+    { name: "硅基流动 (SiliconFlow)", base: "https://api.siliconflow.cn/v1", model: "deepseek-ai/DeepSeek-V3", header: "Authorization: Bearer <KEY>" },
+    { name: "Groq", base: "https://api.groq.com/openai/v1", model: "llama-3.3-70b-versatile", header: "Authorization: Bearer <KEY>" },
+    { name: "OpenRouter", base: "https://openrouter.ai/api/v1", model: "meta-llama/llama-3.3-70b-instruct", header: "Authorization: Bearer <KEY>" },
+    { name: "Moonshot Kimi", base: "https://api.moonshot.cn/v1", model: "moonshot-v1-8k", header: "Authorization: Bearer <KEY>" },
+    { name: "智谱 GLM", base: "https://open.bigmodel.cn/api/paas/v4", model: "glm-4-flash", header: "Authorization: Bearer <KEY>" },
+    { name: "通用自定义中转 API", base: "https://my-proxy.example.com/v1", model: "custom-model", header: "Authorization: Bearer <KEY>" }
+  ],
+
+  renderProviders() {
+    const grid = document.getElementById('provider-cards-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    this.providers.forEach((p, idx) => {
+      const card = document.createElement('div');
+      card.className = 'provider-card' + (idx === 0 ? ' selected' : '');
+      card.innerHTML = `
+        <div class="provider-name">
+          <span>${p.name}</span>
+          <span style="font-size:0.65rem; color:var(--color-accent-primary);">兼容 OpenAI</span>
+        </div>
+        <div class="provider-model">${p.model.split(',')[0]}</div>
+      `;
+      card.onclick = () => {
+        document.querySelectorAll('.provider-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        this.selectProvider(p);
+      };
+      grid.appendChild(card);
+    });
+    this.selectProvider(this.providers[0]);
+  },
+
+  selectProvider(p) {
+    document.getElementById('cur-p-title').textContent = `${p.name} 配置`;
+    document.getElementById('cur-p-base').value = p.base;
+    document.getElementById('cur-p-model').value = p.model;
+    document.getElementById('cur-p-header').value = p.header;
+    const resBox = document.getElementById('ping-result-box');
+    if (resBox) resBox.style.display = 'none';
+  },
+
+  simulatePing() {
+    const spinner = document.getElementById('ping-spinner');
+    const resBox = document.getElementById('ping-result-box');
+    const btn = document.getElementById('btn-test-ping');
+
+    if (spinner) spinner.style.display = 'inline';
+    if (btn) btn.disabled = true;
+    if (resBox) resBox.style.display = 'none';
+
+    setTimeout(() => {
+      if (spinner) spinner.style.display = 'none';
+      if (btn) btn.disabled = false;
+      if (resBox) {
+        resBox.style.display = 'block';
+        resBox.style.background = 'var(--color-success-bg)';
+        resBox.style.border = '1px solid var(--color-success)';
+        resBox.style.color = 'var(--color-success)';
+        const latency = Math.floor(Math.random() * 40 + 75);
+        resBox.innerHTML = `<strong>✅ 连通性探测成功 (HTTP 200 OK)</strong><br>响应往返延迟：${latency}ms | 鉴权有效性：已通过 | 模型端点就绪`;
+      }
+      synth.playTone('HIT');
+      Logger.log('SUCCESS', `模型引擎连通性 Ping 成功: 延迟=${Math.floor(Math.random()*40+75)}ms, HTTP 200 OK`);
+    }, 600);
+  },
+
+  simulateDownload(modelKey, wrapId, textId, speedId, barId, badgeId, btnId) {
+    const wrap = document.getElementById(wrapId);
+    const text = document.getElementById(textId);
+    const speed = document.getElementById(speedId);
+    const bar = document.getElementById(barId);
+    const badge = document.getElementById(badgeId);
+    const btn = document.getElementById(btnId);
+
+    if (wrap) wrap.style.display = 'flex';
+    if (btn) btn.disabled = true;
+    if (badge) {
+      badge.className = 'badge badge-warning';
+      badge.textContent = '下载中 (DOWNLOADING)';
+    }
+
+    let progress = 0;
+    Logger.log('INFO', `内置小模型开始下载: ${modelKey}`);
+
+    const timer = setInterval(() => {
+      progress += Math.floor(Math.random() * 8 + 5);
+      if (progress > 100) progress = 100;
+
+      if (bar) bar.style.width = `${progress}%`;
+      if (text) text.textContent = `下载进度: ${progress}%`;
+      if (speed) speed.textContent = `${(Math.random() * 5 + 15).toFixed(1)} MB/s`;
+
+      if (progress >= 100) {
+        clearInterval(timer);
+        if (badge) {
+          badge.className = 'badge badge-success';
+          badge.textContent = '已就绪 (READY)';
+        }
+        if (btn) {
+          btn.textContent = '✅ 已就绪 (可启用)';
+          btn.className = 'btn btn-success btn-sm';
+          btn.disabled = false;
+        }
+        synth.playTone('SAFE');
+        Logger.log('SUCCESS', `小模型离线下载完成并校验通过: ${modelKey} (状态变更为 READY)`);
+      }
+    }, 120);
+  },
+
+  init() {
+    this.renderProviders();
+
+    // 密钥明文掩码切换
+    const toggleKeyBtn = document.getElementById('btn-toggle-key-mask');
+    const keyInput = document.getElementById('cur-p-key');
+    if (toggleKeyBtn && keyInput) {
+      toggleKeyBtn.onclick = () => {
+        keyInput.type = (keyInput.type === 'password') ? 'text' : 'password';
+      };
+    }
+
+    document.getElementById('btn-test-ping').onclick = () => this.simulatePing();
+
+    // 子 Tab 切换
+    document.querySelectorAll('.engine-subtab-btn').forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll('.engine-subtab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const tabTarget = btn.getAttribute('data-tab');
+        document.querySelectorAll('.engine-subtab-content').forEach(c => c.style.display = 'none');
+        const activeContent = document.getElementById(tabTarget);
+        if (activeContent) activeContent.style.display = 'block';
+        synth.playTone('STEP');
+      };
+    });
+
+    // 本地运行时重新探测
+    document.querySelectorAll('.btn-reprobe').forEach(btn => {
+      btn.onclick = () => {
+        const rt = btn.getAttribute('data-runtime');
+        btn.textContent = '探测中...';
+        btn.disabled = true;
+        setTimeout(() => {
+          btn.textContent = '🔄 重新探测';
+          btn.disabled = false;
+          synth.playTone('HIT');
+          alert(`探测成功：已连接到本地 ${rt} 服务端，服务健康处于在线状态。`);
+          Logger.log('INFO', `本地运行时 ${rt} 探测完成: 服务正常在线`);
+        }, 500);
+      };
+    });
+
+    // 下载按钮
+    const dlQwen15 = document.getElementById('btn-dl-qwen15');
+    if (dlQwen15) {
+      dlQwen15.onclick = () => this.simulateDownload(
+        'Qwen2.5-1.5B-Instruct',
+        'prog-wrap-qwen15', 'prog-text-qwen15', 'prog-speed-qwen15', 'prog-bar-qwen15',
+        'badge-qwen15', 'btn-dl-qwen15'
+      );
+    }
+
+    const dlDeepseek = document.getElementById('btn-dl-deepseek');
+    if (dlDeepseek) {
+      dlDeepseek.onclick = () => this.simulateDownload(
+        'DeepSeek-R1-1.5B',
+        'prog-wrap-deepseek', 'prog-text-deepseek', 'prog-speed-deepseek', 'prog-bar-deepseek',
+        'badge-deepseek', 'btn-dl-deepseek'
+      );
+    }
+  }
+};
+
+// 9. 用户鉴权与游客模式管理器 (Auth Manager)
+const AuthManager = {
+  isLoggedIn: false,
+  currentUser: null,
+
+  setLoggedIn(userInfo) {
+    this.isLoggedIn = true;
+    this.currentUser = userInfo;
+
+    // 更新顶栏头像与身份
+    const avatar = document.getElementById('top-user-avatar');
+    const name = document.getElementById('top-user-name');
+    if (avatar) avatar.textContent = '🧑‍💻';
+    if (name) name.textContent = `${userInfo.name} 同学`;
+
+    // 切换登录页内部展示
+    const form = document.getElementById('auth-form');
+    const profile = document.getElementById('auth-profile-box');
+    if (form) form.style.display = 'none';
+    if (profile) profile.style.display = 'flex';
+
+    synth.playTone('SAFE');
+    Logger.log('SUCCESS', `用户登录成功: ${userInfo.name} (学号: ${userInfo.studentId})`);
+  },
+
+  setGuest() {
+    this.isLoggedIn = false;
+    this.currentUser = null;
+
+    const avatar = document.getElementById('top-user-avatar');
+    const name = document.getElementById('top-user-name');
+    if (avatar) avatar.textContent = '游';
+    if (name) name.textContent = '游客体验中';
+
+    const form = document.getElementById('auth-form');
+    const profile = document.getElementById('auth-profile-box');
+    if (form) form.style.display = 'flex';
+    if (profile) profile.style.display = 'none';
+
+    synth.playTone('STEP');
+    Logger.log('INFO', '已切换回免密游客体验模式');
+  },
+
+  init() {
+    // 密码显隐
+    const pwdBtn = document.getElementById('btn-toggle-pwd-mask');
+    const pwdInput = document.getElementById('auth-password');
+    if (pwdBtn && pwdInput) {
+      pwdBtn.onclick = () => {
+        pwdInput.type = (pwdInput.type === 'password') ? 'text' : 'password';
+      };
+    }
+
+    // 提交登录
+    const form = document.getElementById('auth-form');
+    if (form) {
+      form.onsubmit = (e) => {
+        e.preventDefault();
+        const u = document.getElementById('auth-username').value.trim();
+        const p = document.getElementById('auth-password').value.trim();
+        const feedback = document.getElementById('auth-feedback');
+
+        if (u.length < 3) {
+          if (feedback) {
+            feedback.style.display = 'block';
+            feedback.style.background = 'var(--color-danger-bg)';
+            feedback.style.color = 'var(--color-danger)';
+            feedback.textContent = '❌ 用户名或学号长度不得少于 3 位！';
+          }
+          synth.playTone('DEADLOCK');
+          return;
+        }
+
+        if (p.length < 6) {
+          if (feedback) {
+            feedback.style.display = 'block';
+            feedback.style.background = 'var(--color-danger-bg)';
+            feedback.style.color = 'var(--color-danger)';
+            feedback.textContent = '❌ 登录密码长度不得少于 6 位！';
+          }
+          synth.playTone('DEADLOCK');
+          return;
+        }
+
+        if (feedback) feedback.style.display = 'none';
+
+        // 模拟登录成功
+        this.setLoggedIn({
+          name: "李华",
+          studentId: "20240901",
+          role: "student"
+        });
+      };
+    }
+
+    // 游客体验按钮
+    const guestBtn = document.getElementById('btn-guest-mode');
+    if (guestBtn) guestBtn.onclick = () => this.setGuest();
+
+    // 退出登录按钮
+    const logoutBtn = document.getElementById('btn-auth-logout');
+    if (logoutBtn) logoutBtn.onclick = () => this.setGuest();
+
+    // 顶栏用户徽章点击联动
+    const topBadge = document.getElementById('top-user-badge');
+    if (topBadge) {
+      topBadge.onclick = () => {
+        const navTab = document.querySelector('.nav-tab[data-target="view-login"]');
+        if (navTab) navTab.click();
+      };
+    }
+  }
+};
+
+// 10. 全局导航路由切换与启动逻辑
+document.addEventListener('DOMContentLoaded', () => {
+  // 初始化主题、音效与日志
+  ThemeManager.init();
+  PageRepEngine.init();
+  BankerEngine.init();
+  ThreadsEngine.init();
+  AIChatEngine.init();
+  EngineSettingsManager.init();
+  AuthManager.init();
+
+  Logger.log('INFO', 'os-visualizer 展厅初始化就绪: 全部算法与交互引擎已装载 (零网络依赖)');
+
+  // 导航切换
+  const navTabs = document.querySelectorAll('.nav-tab');
+  const sections = document.querySelectorAll('.view-section');
+
+  const switchView = (targetId) => {
+    sections.forEach(sec => sec.classList.remove('active'));
+    navTabs.forEach(t => t.classList.remove('active'));
+
+    const activeSec = document.getElementById(targetId);
+    const activeTab = document.querySelector(`.nav-tab[data-target="${targetId}"]`);
+
+    if (activeSec) activeSec.classList.add('active');
+    if (activeTab) activeTab.classList.add('active');
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    synth.playTone('STEP');
+    Logger.log('INFO', `切换视图界面: ${targetId}`);
+  };
+
+  navTabs.forEach(tab => {
+    tab.onclick = () => switchView(tab.getAttribute('data-target'));
+  });
+
+  // 功能总览卡片点击跳转
+  document.querySelectorAll('[data-jump]').forEach(el => {
+    el.onclick = () => switchView(el.getAttribute('data-jump'));
+  });
+
+  // 音效开关与音量
+  const soundBtn = document.getElementById('btn-sound-toggle');
+  const soundIcon = document.getElementById('sound-btn-icon');
+  const soundText = document.getElementById('sound-btn-text');
+  if (soundBtn) {
+    soundBtn.onclick = () => {
+      synth.isMuted = !synth.isMuted;
+      if (soundIcon) soundIcon.textContent = synth.isMuted ? '🔇' : '🔊';
+      if (soundText) soundText.textContent = synth.isMuted ? '音效: 关' : '音效: 开';
+      Logger.log('INFO', `全局音效已${synth.isMuted ? '静音' : '开启'}`);
+    };
+  }
+
+  const volSlider = document.getElementById('audio-volume-slider');
+  const volVal = document.getElementById('audio-volume-val');
+  if (volSlider) {
+    volSlider.oninput = (e) => {
+      synth.volume = parseFloat(e.target.value);
+      if (volVal) volVal.textContent = `${Math.round(synth.volume * 100)}%`;
+    };
+  }
+
+  // 日志过滤器
+  document.querySelectorAll('.log-filter-btn').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('.log-filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      Logger.filter = btn.getAttribute('data-filter');
+      Logger.render();
+    };
+  });
+
+  const clearLogBtn = document.getElementById('btn-clear-logs');
+  if (clearLogBtn) clearLogBtn.onclick = () => Logger.clear();
+});
+
+  </script>
+</body>
+</html>
