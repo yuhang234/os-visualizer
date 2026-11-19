@@ -10,12 +10,13 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any, AsyncIterator
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from .api.v1 import ai_proxy, algorithms, auth, engine_manager
 from .core import db
@@ -97,3 +98,23 @@ def health() -> dict[str, Any]:
             "guestDailyChatLimit": settings.guest_daily_chat_limit,
         },
     }
+
+
+if settings.static_dir is not None and (settings.static_dir / "index.html").is_file():
+    # 桌面版（PyInstaller 启动器）：同一个进程同时托管已构建的前端与 /api。
+    # 单页应用的路由由前端 React Router 接管，因此未知路径回落到 index.html。
+    _static_root: Path = settings.static_dir
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def serve_spa(full_path: str) -> Any:
+        if full_path.startswith(("api/", "docs", "openapi.json", "redoc")):
+            return JSONResponse(status_code=404, content={"code": 404, "message": "接口不存在"})
+        if full_path:
+            candidate = (_static_root / full_path).resolve()
+            try:
+                candidate.relative_to(_static_root)
+            except ValueError:
+                return JSONResponse(status_code=404, content={"code": 404, "message": "资源不存在"})
+            if candidate.is_file():
+                return FileResponse(candidate)
+        return FileResponse(_static_root / "index.html")
