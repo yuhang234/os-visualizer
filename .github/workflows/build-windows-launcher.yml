@@ -5,6 +5,9 @@ name: Build Windows launcher
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
+      - fm/os-visualizer-release-1
     tags:
       - 'v*'
 
