@@ -75,6 +75,32 @@ npm run preview        # 本地预览构建产物（:4173）
 
 构建产物为纯静态文件，部署时由 Nginx / Caddy 托管 `dist/` 并把 `/api` 前缀转发到后端 `:8000` 即可（同前缀、无跨域）。后端 CORS 白名单可用 `OSVIS_CORS_ORIGINS` 覆盖。
 
+### 3.3 Windows 一键运行包（GitHub Release）
+
+从 [Releases](https://github.com/yuhang234/os-visualizer/releases) 下载 `os-visualizer-1.0.0-win64.exe`，双击即可。程序会挑一个空闲的本地端口、在同一进程里同时托管内置后端与已构建前端，然后用默认浏览器打开页面；关闭控制台窗口（或 Ctrl+C）即退出。
+
+- 无需安装 Python / Node，也无需联网；exe 内已包含后端与前端产物。
+- 运行数据（SQLite 库、JWT 密钥、内置模型缓存）写在 `%LOCALAPPDATA%\os-visualizer`，不会落在临时解包目录里；卸载只需删除该目录。
+- 该 exe 未做代码签名，Windows SmartScreen 首次可能提示「已保护你的电脑」：点「更多信息 → 仍要运行」。
+- 可选参数：`--port 8765`（固定端口）、`--no-browser`（不自动开浏览器）、`--data-dir D:\osvis`（自定义数据目录）。
+- 服务只监听 `127.0.0.1`，不会把接口暴露到局域网。
+
+在 Windows 上自行构建（先装 Python 3.11+/Node 20+）：
+
+```powershell
+cd frontend; npm ci; npm run build; cd ..
+python -m pip install -r backend/requirements.txt pyinstaller
+python -m PyInstaller --clean --noconfirm packaging/os_visualizer.spec
+# 产物：dist/os-visualizer-1.0.0-win64.exe
+```
+
+也可以直接运行 GitHub Actions 工作流 `Build Windows launcher`（在 windows-latest 上构建并冒烟测试 API 与 SPA）。
+
+### 3.4 平台支持与手机端说明
+
+- 受支持的目标是桌面浏览器（Chrome / Edge / Firefox / Safari）。布局以 1280px 以上的桌面宽度为设计基准。
+- **暂不提供 Android APK**，原因有二：其一，三个算法页的轨迹全部由后端计算，纯静态前端无法离线运行；其二，当前布局是桌面优先（侧边栏固定宽度），在 390px 手机宽度下主内容会被裁切。用 Capacitor 之类的壳包装，只会得到一个「必须连接到某台电脑上的后端」且界面错位的应用，因此没有发布 APK。后续若要做移动端，需要先完成响应式改造。
+
 ## 4. 测试
 
 ```bash
@@ -110,6 +136,7 @@ npm run build          # 构建（含类型检查）
 ```
 backend/
   app/
+    desktop.py        桌面版启动器（空闲端口 + 同进程托管前端 + 打开浏览器）
     api/v1/           algorithms.py（轨迹生成） ai_proxy.py（SSE 对话 + 厂商配置）
                       auth.py（注册/登录/鉴权） engine_manager.py（探测 + 模型下载管理）
     engine/           page_replacement.py  banker.py  threads_simulator.py  trace.py
@@ -132,6 +159,8 @@ frontend/
     services/         后端 API 客户端（含 SSE 流式读取）
     styles/           tokens.css（深/浅两套同名令牌）app.css（手写样式，全部引用令牌）
 docs/                 design-spec.md（设计契约）mockup.html（交互原型）
+packaging/            os_visualizer.spec + launcher.py（PyInstaller 一键包配方）
+.github/workflows/    build-windows-launcher.yml（Windows exe 构建 + 冒烟测试）
 ```
 
 ## 7. 主要功能与页面
