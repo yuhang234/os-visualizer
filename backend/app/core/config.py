@@ -97,6 +97,11 @@ class Settings:
     server_api_key: str = field(default_factory=lambda: _env_str("OSVIS_SERVER_API_KEY", ""))
     server_base_url: str = field(default_factory=lambda: _env_str("OSVIS_SERVER_BASE_URL", ""))
 
+    # 桌面版静态资源：非空时同进程托管已构建的前端（PyInstaller 启动器设置，见 app/desktop.py）
+    static_dir: Path | None = field(
+        default_factory=lambda: Path(raw).expanduser().resolve() if (raw := _env_str("OSVIS_STATIC_DIR", "")) else None
+    )
+
     # 本地部署探测
     local_probe_timeout: float = field(default_factory=lambda: _env_float("OSVIS_LOCAL_PROBE_TIMEOUT", 2.5))
 

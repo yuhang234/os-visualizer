@@ -1,0 +1,71 @@
+name: Build Windows launcher
+
+# Builds the PyInstaller one-file Windows executable for the GitHub Release.
+# Manual dispatch is used for release candidates; tags rebuild automatically.
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  windows-exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        shell: bash
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      - name: Install backend + PyInstaller
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements.txt pyinstaller
+
+      - name: Build one-file executable
+        shell: bash
+        run: |
+          python -m PyInstaller --clean --noconfirm packaging/os_visualizer.spec
+          ls -la dist
+
+      - name: Smoke test the executable
+        shell: bash
+        # Starts the exe without a browser, waits for the health endpoint, then
+        # checks that both the API and the bundled SPA are served.
+        run: |
+          set -euo pipefail
+          ./dist/os-visualizer-1.0.0-win64.exe --no-browser --port 8765 --data-dir "$RUNNER_TEMP/osvis-data" &
+          EXE_PID=$!
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8765/api/v1/health > /dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8765/api/v1/health
+          curl -fsS http://127.0.0.1:8765/ | grep -qi '<div id="root">'
+          curl -fsS http://127.0.0.1:8765/algorithms/banker | grep -qi '<div id="root">'
+          kill $EXE_PID || true
+
+      - name: Upload executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: os-visualizer-win64
+          path: dist/os-visualizer-1.0.0-win64.exe
+          if-no-files-found: error

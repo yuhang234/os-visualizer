@@ -24,3 +24,10 @@ npm-debug.log*
 
 # ---- TS 增量编译缓存 ----
 *.tsbuildinfo
+
+# ---- 打包产物（PyInstaller / 发布用二进制，不入库）----
+/build/
+/dist/
+/packaging/build/
+/packaging/dist/
+*.exe
