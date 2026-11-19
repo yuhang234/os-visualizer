@@ -96,7 +96,17 @@ def configure_environment(args: argparse.Namespace) -> Path:
     return data_dir
 
 
+def _configure_console() -> None:
+    """Keep console output safe on Windows code pages (cp1252/cp936)."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+        except (AttributeError, ValueError):
+            pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    _configure_console()
     args = parse_args(argv)
     data_dir = configure_environment(args)
 
@@ -113,24 +123,24 @@ def main(argv: list[str] | None = None) -> int:
     server_thread.start()
 
     if not wait_until_ready(port):
-        print(f"[{APP_TITLE}] 服务启动失败：端口 {port} 在 30 秒内没有就绪。", file=sys.stderr)
+        print(f"[{APP_TITLE}] Failed to start: port {port} was not ready within 30s.", file=sys.stderr)
         return 1
 
-    print(f"[{APP_TITLE}] 已启动：{url}")
-    print(f"[{APP_TITLE}] 数据目录：{data_dir}")
-    print(f"[{APP_TITLE}] 关闭此窗口或按 Ctrl+C 退出。")
+    print(f"[{APP_TITLE}] Serving at {url}")
+    print(f"[{APP_TITLE}] Data directory: {data_dir}")
+    print(f"[{APP_TITLE}] Close this window or press Ctrl+C to stop.")
 
     if not args.no_browser:
         try:
             webbrowser.open(url)
         except Exception as exc:  # pragma: no cover - depends on desktop session
-            print(f"[{APP_TITLE}] 无法自动打开浏览器（{exc}），请手动访问 {url}。", file=sys.stderr)
+            print(f"[{APP_TITLE}] Could not open a browser ({exc}); open {url} manually.", file=sys.stderr)
 
     try:
         while server_thread.is_alive():
             server_thread.join(timeout=0.5)
     except KeyboardInterrupt:
-        print(f"\n[{APP_TITLE}] 正在退出…")
+        print(f"\n[{APP_TITLE}] Shutting down...")
         server.should_exit = True
         server_thread.join(timeout=10)
     return 0
